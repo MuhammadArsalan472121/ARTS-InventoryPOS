@@ -33,7 +33,7 @@ export default function ProductsScreen({
       <Header title="Products" 
       onOpenMenu={onOpenMenu}
       onOpenProfile={onOpenProfile}  
-  user={user} />
+       user={user} />
       <View style={styles.contentPadding}>
         <View style={styles.titleRow}>
           <View>

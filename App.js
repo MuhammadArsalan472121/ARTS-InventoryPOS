@@ -29,9 +29,10 @@ export default function App() {
   });
   const [profileModalVisible, setProfileModalVisible] = useState(false);
 
-  const [products, setProducts] = useState(INITIAL_PRODUCTS || []);
-  const [inventoryItems, setInventoryItems] = useState(INITIAL_INVENTORY || []);
-
+  // const [products, setProducts] = useState(INITIAL_PRODUCTS || []);
+  // const [inventoryItems, setInventoryItems] = useState(INITIAL_INVENTORY || []);
+  const [products, setProducts] = useState([]);
+  const [inventoryItems, setInventoryItems] = useState([]);
   const [productModalVisible, setProductModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 

@@ -8,30 +8,107 @@ export default function InventoryScreen({
   onOpenProfile, 
   user, 
   inventoryItems = [], 
-  onOpenAdd, 
   onOpenEdit, 
   onDelete 
 }) {
   const [search, setSearch] = useState('');
+  const [selectedItemId, setSelectedItemId] = useState('');
+  const [quickStockInput, setQuickStockInput] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const safeItems = inventoryItems || [];
   const filteredInventory = safeItems.filter((i) => i?.name?.toLowerCase().includes(search.toLowerCase()));
   const lowStockCount = safeItems.filter((i) => i.stock <= i.minStock).length;
 
+  const selectedItem = safeItems.find((item) => item.id === selectedItemId);
+
+  const handleSelectItem = (item) => {
+    setSelectedItemId(item.id);
+    setQuickStockInput(String(item.stock));
+    setIsDropdownOpen(false);
+  };
+
+  const handleApplyStockUpdate = () => {
+    if (!selectedItem) return;
+    const newStock = Number(quickStockInput);
+    if (isNaN(newStock) || newStock < 0) return;
+    
+    onOpenEdit({ ...selectedItem, stock: newStock });
+  };
+
   return (
     <ScrollView style={styles.tabContainer}>
-      <Header title="Inventory" onOpenMenu={onOpenMenu} 
-      onOpenMenu={onOpenMenu}
-      onOpenProfile={onOpenProfile}/>
+      <Header 
+        title="Inventory" 
+        onOpenMenu={onOpenMenu} 
+        onOpenProfile={onOpenProfile} 
+        user={user} 
+      />
       <View style={styles.contentPadding}>
         <View style={styles.titleRow}>
           <View>
             <Text style={styles.pageTitle}>Inventory</Text>
             <Text style={styles.pageSubtitle}>Track stock levels</Text>
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={onOpenAdd}>
-            <Text style={styles.addButtonText}>+ Add Item</Text>
+        </View>
+
+        {/* Quick Quantity Adjustment Box */}
+        <View style={styles.quickEditCard}>
+          <Text style={styles.quickEditTitle}>QUICK QUANTITY UPDATE</Text>
+
+          <TouchableOpacity 
+            style={styles.dropdownSelector} 
+            activeOpacity={0.8}
+            onPress={() => setIsDropdownOpen(!isDropdownOpen)}
+          >
+            <Text style={[styles.dropdownValueText, !selectedItem && styles.placeholderText]}>
+              {selectedItem ? selectedItem.name : 'Select item to update stock...'}
+            </Text>
+            <Text style={styles.arrowIcon}>{isDropdownOpen ? '▲' : '▼'}</Text>
           </TouchableOpacity>
+
+          {isDropdownOpen && (
+            <View style={styles.dropdownMenu}>
+              {safeItems.length === 0 ? (
+                <View style={styles.dropdownOption}>
+                  <Text style={styles.dropdownOptionText}>No items available</Text>
+                </View>
+              ) : (
+                safeItems.map((item, index) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      styles.dropdownOption,
+                      index === safeItems.length - 1 && { borderBottomWidth: 0 },
+                      selectedItemId === item.id && styles.dropdownOptionSelected
+                    ]}
+                    onPress={() => handleSelectItem(item)}
+                  >
+                    <Text style={styles.dropdownOptionText}>
+                      {item.name} (Current: {item.stock})
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          )}
+
+          {selectedItem && (
+            <View style={styles.stockActionRow}>
+              <View style={styles.stockInputContainer}>
+                <Text style={styles.stockInputLabel}>New Quantity:</Text>
+                <TextInput
+                  style={styles.stockInput}
+                  keyboardType="numeric"
+                  value={quickStockInput}
+                  onChangeText={setQuickStockInput}
+                />
+              </View>
+              <TouchableOpacity style={styles.updateStockBtn} onPress={handleApplyStockUpdate}>
+                <Text style={styles.updateStockBtnText}>Save Quantity</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={styles.gridContainer}>
@@ -96,8 +173,73 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   pageTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.textDark },
   pageSubtitle: { fontSize: 12, color: COLORS.textLight },
-  addButton: { backgroundColor: COLORS.accentYellow, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
-  addButtonText: { fontWeight: 'bold', color: COLORS.darkBlue },
+
+  quickEditCard: {
+    backgroundColor: COLORS.white,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.borderGray,
+    marginBottom: 12,
+  },
+  quickEditTitle: { fontSize: 10, fontWeight: 'bold', color: COLORS.textLight, marginBottom: 8 },
+  dropdownSelector: {
+    backgroundColor: COLORS.inputBg,
+    borderWidth: 1,
+    borderColor: COLORS.borderGray,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dropdownValueText: { fontSize: 13, color: COLORS.textDark },
+  placeholderText: { color: '#9CA3AF' },
+  arrowIcon: { fontSize: 11, color: COLORS.textLight },
+  dropdownMenu: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.borderGray,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  dropdownOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderGray,
+  },
+  dropdownOptionSelected: { backgroundColor: '#EFF6FF' },
+  dropdownOptionText: { fontSize: 13, color: COLORS.textDark },
+
+  stockActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  stockInputContainer: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  stockInputLabel: { fontSize: 12, color: COLORS.textDark, fontWeight: '600' },
+  stockInput: {
+    backgroundColor: COLORS.inputBg,
+    borderWidth: 1,
+    borderColor: COLORS.borderGray,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    width: 70,
+    fontSize: 13,
+    color: COLORS.textDark,
+  },
+  updateStockBtn: {
+    backgroundColor: COLORS.primaryBlue,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  updateStockBtnText: { color: COLORS.white, fontSize: 12, fontWeight: 'bold' },
+
   gridContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   statCard: { width: '48%', backgroundColor: COLORS.white, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderGray },
   statLabel: { fontSize: 10, fontWeight: 'bold', color: COLORS.textLight },

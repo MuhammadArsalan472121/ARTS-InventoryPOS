@@ -3,26 +3,41 @@ import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet, Alert } fro
 import { COLORS } from '../constants/theme';
 
 export default function ProductModal({ visible, product, onClose, onSave }) {
-  const [form, setForm] = useState({ name: '', brand: '', category: 'Electronics', price: '', retailPrice: '', stock: '' });
+  const [form, setForm] = useState({ 
+    name: '', 
+    brand: '', 
+    category: '', 
+    price: '', 
+    retailPrice: '', 
+    stock: '' 
+  });
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const categories = ['Electronics', 'Furniture', 'Accessories'];
 
   useEffect(() => {
     if (product) {
       setForm({
-        name: product.name,
-        brand: product.brand,
-        category: product.category,
-        price: product.price,
-        retailPrice: product.retailPrice,
-        stock: String(product.stock),
+        name: product.name || '',
+        brand: product.brand || '',
+        category: product.category || '',
+        price: product.price ? String(product.price) : '',
+        retailPrice: product.retailPrice ? String(product.retailPrice) : '',
+        stock: product.stock !== undefined ? String(product.stock) : '',
       });
     } else {
-      setForm({ name: '', brand: '', category: 'Electronics', price: '', retailPrice: '', stock: '' });
+      setForm({ name: '', brand: '', category: '', price: '', retailPrice: '', stock: '' });
     }
+    setDropdownOpen(false);
   }, [product, visible]);
 
   const handleSave = () => {
     if (!form.name || !form.price) {
       Alert.alert('Error', 'Product Name and Price are required.');
+      return;
+    }
+    if (!form.category) {
+      Alert.alert('Error', 'Please select a category.');
       return;
     }
     onSave({ ...form, stock: Number(form.stock) || 0 });
@@ -35,27 +50,92 @@ export default function ProductModal({ visible, product, onClose, onSave }) {
           <Text style={styles.modalTitle}>{product ? 'Edit Product' : '+ Add Product'}</Text>
 
           <Text style={styles.inputLabel}>PRODUCT NAME</Text>
-          <TextInput style={styles.textInput} placeholder="e.g. Wireless Keyboard" value={form.name} onChangeText={(text) => setForm({ ...form, name: text })} />
+          <TextInput 
+            style={styles.textInput} 
+            placeholder="e.g. Wireless Keyboard" 
+            value={form.name} 
+            onChangeText={(text) => setForm({ ...form, name: text })} 
+          />
 
           <Text style={styles.inputLabel}>BRAND NAME</Text>
-          <TextInput style={styles.textInput} placeholder="e.g. Logitech" value={form.brand} onChangeText={(text) => setForm({ ...form, brand: text })} />
+          <TextInput 
+            style={styles.textInput} 
+            placeholder="e.g. Logitech" 
+            value={form.brand} 
+            onChangeText={(text) => setForm({ ...form, brand: text })} 
+          />
 
+          {/* Category Dropdown Trigger */}
           <Text style={styles.inputLabel}>CATEGORY</Text>
-          <TextInput style={styles.textInput} placeholder="e.g. Electronics" value={form.category} onChangeText={(text) => setForm({ ...form, category: text })} />
+          <TouchableOpacity 
+            style={styles.dropdownSelector} 
+            activeOpacity={0.8}
+            onPress={() => setDropdownOpen(!dropdownOpen)}
+          >
+            <Text style={[styles.dropdownValueText, !form.category && styles.placeholderText]}>
+              {form.category || 'Select Category...'}
+            </Text>
+            <Text style={styles.arrowIcon}>{dropdownOpen ? '▲' : '▼'}</Text>
+          </TouchableOpacity>
+
+          {/* Expanded Dropdown Menu */}
+          {dropdownOpen && (
+            <View style={styles.dropdownMenu}>
+              {categories.map((cat, index) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.dropdownOption,
+                    index === categories.length - 1 && { borderBottomWidth: 0 },
+                    form.category === cat && styles.dropdownOptionSelected
+                  ]}
+                  onPress={() => {
+                    setForm({ ...form, category: cat });
+                    setDropdownOpen(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.dropdownOptionText, 
+                    form.category === cat && styles.dropdownOptionTextSelected
+                  ]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           <View style={styles.row}>
             <View style={styles.flex1Right}>
               <Text style={styles.inputLabel}>RETAIL PRICE</Text>
-              <TextInput style={styles.textInput} placeholder="0.00" keyboardType="numeric" value={form.retailPrice} onChangeText={(text) => setForm({ ...form, retailPrice: text })} />
+              <TextInput 
+                style={styles.textInput} 
+                placeholder="0.00" 
+                keyboardType="numeric" 
+                value={form.retailPrice} 
+                onChangeText={(text) => setForm({ ...form, retailPrice: text })} 
+              />
             </View>
             <View style={styles.flex1Left}>
               <Text style={styles.inputLabel}>SALES PRICE</Text>
-              <TextInput style={styles.textInput} placeholder="0.00" keyboardType="numeric" value={form.price} onChangeText={(text) => setForm({ ...form, price: text })} />
+              <TextInput 
+                style={styles.textInput} 
+                placeholder="0.00" 
+                keyboardType="numeric" 
+                value={form.price} 
+                onChangeText={(text) => setForm({ ...form, price: text })} 
+              />
             </View>
           </View>
 
           <Text style={styles.inputLabel}>STOCK</Text>
-          <TextInput style={styles.textInput} placeholder="0" keyboardType="numeric" value={form.stock} onChangeText={(text) => setForm({ ...form, stock: text })} />
+          <TextInput 
+            style={styles.textInput} 
+            placeholder="0" 
+            keyboardType="numeric" 
+            value={form.stock} 
+            onChangeText={(text) => setForm({ ...form, stock: text })} 
+          />
 
           <View style={styles.modalButtonRow}>
             <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
@@ -106,6 +186,57 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: COLORS.textDark,
+  },
+  dropdownSelector: {
+    backgroundColor: COLORS.inputBg,
+    borderWidth: 1,
+    borderColor: COLORS.borderGray,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dropdownValueText: {
+    fontSize: 14,
+    color: COLORS.textDark,
+  },
+  placeholderText: {
+    color: '#9CA3AF',
+  },
+  arrowIcon: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },
+  dropdownMenu: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.borderGray,
+    borderRadius: 8,
+    marginTop: 4,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  dropdownOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderGray,
+  },
+  dropdownOptionSelected: {
+    backgroundColor: '#EFF6FF',
+  },
+  dropdownOptionText: {
+    fontSize: 14,
+    color: COLORS.textDark,
+  },
+  dropdownOptionTextSelected: {
+    color: COLORS.primaryBlue,
+    fontWeight: 'bold',
   },
   row: {
     flexDirection: 'row',
