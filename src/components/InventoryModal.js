@@ -7,42 +7,62 @@ export default function InventoryModal({ visible, item, onClose, onSave }) {
 
   useEffect(() => {
     if (item) {
-      setForm({ name: item.name, stock: String(item.stock), minStock: String(item.minStock) });
+      setForm({ name: item.name || '', stock: String(item.stock ?? ''), minStock: String(item.minStock ?? '') });
     } else {
       setForm({ name: '', stock: '', minStock: '' });
     }
   }, [item, visible]);
 
   const handleSave = () => {
-    if (!form.name) {
+    if (!form.name.trim()) {
       Alert.alert('Error', 'Product Name is required.');
       return;
     }
     onSave({
-      name: form.name,
+      name: form.name.trim(),
       stock: Number(form.stock) || 0,
       minStock: Number(form.minStock) || 0,
     });
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
+    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>{item ? 'Update Stock' : '+ Add Inventory Item'}</Text>
 
           <Text style={styles.inputLabel}>PRODUCT NAME</Text>
-          <TextInput style={styles.textInput} placeholder="e.g. Wireless Keyboard" value={form.name} onChangeText={(text) => setForm({ ...form, name: text })} />
+          <TextInput 
+            style={styles.textInput} 
+            placeholder="e.g. Wireless Keyboard" 
+            placeholderTextColor="#9CA3AF"
+            value={form.name} 
+            onChangeText={(text) => setForm({ ...form, name: text })} 
+          />
 
           <View style={styles.row}>
             <View style={styles.flex1Right}>
               <Text style={styles.inputLabel}>CURRENT STOCK</Text>
-              <TextInput style={styles.textInput} placeholder="0" keyboardType="numeric" value={form.stock} onChangeText={(text) => setForm({ ...form, stock: text })} />
+              <TextInput 
+                style={styles.textInput} 
+                placeholder="0" 
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric" 
+                value={form.stock} 
+                onChangeText={(text) => setForm({ ...form, stock: text })} 
+              />
             </View>
 
             <View style={styles.flex1Left}>
               <Text style={styles.inputLabel}>MIN STOCK</Text>
-              <TextInput style={styles.textInput} placeholder="10" keyboardType="numeric" value={form.minStock} onChangeText={(text) => setForm({ ...form, minStock: text })} />
+              <TextInput 
+                style={styles.textInput} 
+                placeholder="10" 
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric" 
+                value={form.minStock} 
+                onChangeText={(text) => setForm({ ...form, minStock: text })} 
+              />
             </View>
           </View>
 
@@ -69,32 +89,33 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '85%',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.white || '#FFFFFF',
     borderRadius: 16,
     padding: 20,
+    elevation: 5,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.textDark,
+    color: COLORS.textDark || '#111827',
     marginBottom: 10,
   },
   inputLabel: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: COLORS.textLight,
+    color: COLORS.textLight || '#6B7280',
     marginTop: 10,
     marginBottom: 4,
   },
   textInput: {
-    backgroundColor: COLORS.inputBg,
+    backgroundColor: COLORS.inputBg || '#F9FAFB',
     borderWidth: 1,
-    borderColor: COLORS.borderGray,
+    borderColor: COLORS.borderGray || '#E5E7EB',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: COLORS.textDark,
+    color: COLORS.textDark || '#111827',
   },
   row: {
     flexDirection: 'row',
@@ -117,20 +138,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: COLORS.inputBg,
+    backgroundColor: '#F3F4F6',
   },
   cancelButtonText: {
-    color: COLORS.textDark,
+    color: COLORS.textDark || '#111827',
     fontSize: 13,
   },
   saveButton: {
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: COLORS.primaryBlue,
+    backgroundColor: COLORS.primaryBlue || '#2563EB',
   },
   saveButtonText: {
-    color: COLORS.white,
+    color: COLORS.white || '#FFFFFF',
     fontSize: 13,
     fontWeight: 'bold',
   },

@@ -1,33 +1,15 @@
+
+
 import React, { useState } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, TextInput, StyleSheet, Alert } from 'react-native';
 import Header from '../components/Header';
 import { COLORS } from '../constants/theme';
 
-// Mock raw dataset for dynamic reporting across days, weeks, and months
-const MOCK_DAILY_DATA = [
-  { id: '1', date: '2026-08-05', label: 'Aug 5 (Today)', inQty: 18, outQty: 42, retQty: 3 },
-  { id: '2', date: '2026-08-04', label: 'Aug 4 (Yesterday)', inQty: 10, outQty: 30, retQty: 1 },
-  { id: '3', date: '2026-08-03', label: 'Aug 3', inQty: 15, outQty: 28, retQty: 0 },
-  { id: '4', date: '2026-08-02', label: 'Aug 2', inQty: 22, outQty: 50, retQty: 4 },
-  { id: '5', date: '2026-08-01', label: 'Aug 1', inQty: 8, outQty: 25, retQty: 2 },
-  { id: '6', date: '2026-07-29', label: 'Jul 29 (Last Week)', inQty: 12, outQty: 38, retQty: 2 },
-  { id: '7', date: '2026-07-28', label: 'Jul 28 (Last Week)', inQty: 20, outQty: 41, retQty: 3 },
-  { id: '8', date: '2026-07-15', label: 'Jul 15', inQty: 14, outQty: 33, retQty: 1 },
-  { id: '9', date: '2026-07-10', label: 'Jul 10', inQty: 25, outQty: 45, retQty: 3 },
-];
-
-const MOCK_MONTHLY_DATA = [
-  { id: 'm1', date: '2026-08', label: 'August 2026 (Current)', inQty: 85, outQty: 210, retQty: 6 },
-  { id: 'm2', date: '2026-07', label: 'July 2026', inQty: 138, outQty: 572, retQty: 14 },
-  { id: 'm3', date: '2026-06', label: 'June 2026', inQty: 124, outQty: 530, retQty: 11 },
-  { id: 'm4', date: '2026-05', label: 'May 2026', inQty: 103, outQty: 441, retQty: 9 },
-  { id: 'm5', date: '2026-04', label: 'April 2026', inQty: 95, outQty: 390, retQty: 6 },
-];
-
-export default function ReportsScreen({ 
-  onOpenMenu, 
-  onOpenProfile, 
-  user 
+export default function ReportsScreen({
+  onOpenMenu,
+  onOpenProfile,
+  user,
+  salesTransactions = [], // Real live POS sales passed from state
 }) {
   // Search state (only ONE active at a time)
   const [activeMode, setActiveMode] = useState('QUICK'); // 'QUICK' or 'CUSTOM'
@@ -40,7 +22,124 @@ export default function ReportsScreen({
 
   const quickFilterOptions = ['Today', 'Yesterday', 'Last Week', 'Last Month'];
 
-  // Handle Quick Dropdown Select (Disables Custom Range)
+  // Dynamic Date Helpers
+const getTodayStr = () => {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+  const getYesterdayStr = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+const normalizeTransactionDate = (date) => {
+  if (!date) return getTodayStr();
+
+  const dateString = String(date).trim();
+
+  // New Dashboard format: YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+    return dateString.substring(0, 10);
+  }
+
+  // Old format: M/D/YYYY, time
+  const match = dateString.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})/
+  );
+
+  if (match) {
+    const month = String(match[1]).padStart(2, '0');
+    const day = String(match[2]).padStart(2, '0');
+    const year = match[3];
+
+    return `${year}-${month}-${day}`;
+  }
+
+  return getTodayStr();
+};
+  // Aggregate live POS sales into daily breakdown records
+  const getAggregatedDailyData = () => {
+    if (!salesTransactions || salesTransactions.length === 0) {
+      return [];
+    }
+
+    const dailyMap = {};
+    salesTransactions.forEach((tx) => {
+      const dateKey = normalizeTransactionDate(tx.date);
+      const itemsSold = tx.items
+        ? tx.items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0)
+        : 0;
+
+      if (!dailyMap[dateKey]) {
+        dailyMap[dateKey] = {
+          id: dateKey,
+          date: dateKey,
+          label: dateKey === getTodayStr() ? `${dateKey} (Today)` : dateKey,
+          inQty: 0,
+          outQty: 0,
+          retQty: 0,
+          profit: 0,
+          revenue: 0,
+        };
+      }
+
+      dailyMap[dateKey].outQty += itemsSold;
+      dailyMap[dateKey].profit += Number(tx.totalProfit || 0);
+      dailyMap[dateKey].revenue += Number(tx.totalRevenue || 0);
+    });
+
+    return Object.values(dailyMap);
+  };
+
+  // Aggregate live POS sales into monthly breakdown records
+  const getAggregatedMonthlyData = () => {
+    if (!salesTransactions || salesTransactions.length === 0) {
+      return [];
+    }
+
+    const monthlyMap = {};
+    salesTransactions.forEach((tx) => {
+      const dateKey = normalizeTransactionDate(tx.date);
+      const monthKey = dateKey.substring(0, 7); // YYYY-MM
+      const itemsSold = tx.items
+        ? tx.items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0)
+        : 0;
+
+      if (!monthlyMap[monthKey]) {
+        monthlyMap[monthKey] = {
+          id: monthKey,
+          date: monthKey,
+          label: monthKey,
+          inQty: 0,
+          outQty: 0,
+          retQty: 0,
+          profit: 0,
+          revenue: 0,
+        };
+      }
+
+      monthlyMap[monthKey].outQty += itemsSold;
+      monthlyMap[monthKey].profit += Number(tx.totalProfit || 0);
+      monthlyMap[monthKey].revenue += Number(tx.totalRevenue || 0);
+    });
+
+    return Object.values(monthlyMap);
+  };
+
+  const dailyDataList = getAggregatedDailyData();
+  const monthlyDataList = getAggregatedMonthlyData();
+
+  // Handle Quick Dropdown Select
   const handleSelectQuickFilter = (option) => {
     setActiveMode('QUICK');
     setQuickFilter(option);
@@ -49,7 +148,7 @@ export default function ReportsScreen({
     setToDate('');
   };
 
-  // Handle Custom Input Changes (Disables Quick Filter)
+  // Handle Custom Input Changes
   const handleCustomFromChange = (text) => {
     setActiveMode('CUSTOM');
     setQuickFilter('Select timeframe...');
@@ -62,7 +161,7 @@ export default function ReportsScreen({
     setToDate(text);
   };
 
-  // Reset Filters after search/view
+  // Reset Filters
   const handleResetFilters = () => {
     setActiveMode('QUICK');
     setQuickFilter('Today');
@@ -71,30 +170,37 @@ export default function ReportsScreen({
     setIsQuickFilterOpen(false);
   };
 
-  // Get current active table records dynamically
+  // Get filtered table records
   const getFilteredData = () => {
+    const todayStr = getTodayStr();
+    const yesterdayStr = getYesterdayStr();
+
     if (activeMode === 'QUICK') {
       if (quickFilter === 'Today') {
-        return MOCK_DAILY_DATA.filter((i) => i.date === '2026-08-05');
+        return dailyDataList.filter((i) => i.date === todayStr);
       }
       if (quickFilter === 'Yesterday') {
-        return MOCK_DAILY_DATA.filter((i) => i.date === '2026-08-04');
+        return dailyDataList.filter((i) => i.date === yesterdayStr);
       }
       if (quickFilter === 'Last Week') {
-        return MOCK_DAILY_DATA.filter((i) => i.date >= '2026-07-28' && i.date <= '2026-08-03');
+        return dailyDataList;
       }
       if (quickFilter === 'Last Month') {
-        return MOCK_MONTHLY_DATA.filter((i) => i.date === '2026-07');
+        return monthlyDataList;
       }
     } else {
       // Custom Range mode
       if (rangeType === 'DAILY') {
-        return MOCK_DAILY_DATA.filter((i) => (!fromDate || i.date >= fromDate) && (!toDate || i.date <= toDate));
+        return dailyDataList.filter(
+          (i) => (!fromDate || i.date >= fromDate) && (!toDate || i.date <= toDate)
+        );
       } else {
-        return MOCK_MONTHLY_DATA.filter((i) => (!fromDate || i.date >= fromDate) && (!toDate || i.date <= toDate));
+        return monthlyDataList.filter(
+          (i) => (!fromDate || i.date >= fromDate) && (!toDate || i.date <= toDate)
+        );
       }
     }
-    return [];
+    return dailyDataList;
   };
 
   const currentReportData = getFilteredData();
@@ -107,34 +213,34 @@ export default function ReportsScreen({
     return `Custom Range: ${fromDate || 'Start'} to ${toDate || 'End'}`;
   };
 
-  // Mobile Actions
+  // Actions
   const handlePrint = () => {
     if (currentReportData.length === 0) {
-      Alert.alert('No Data', 'There is no report data to print for this selection.');
+      Alert.alert('No Data', 'There is no sales data to print for this selection.');
       return;
     }
-    Alert.alert('Printing', `Sending ${currentReportData.length} entries to mobile printer...`);
+    Alert.alert('Printing', `Sending ${currentReportData.length} report entries to printer...`);
   };
 
   const handleDownload = () => {
     if (currentReportData.length === 0) {
-      Alert.alert('No Data', 'There is no report data to download for this selection.');
+      Alert.alert('No Data', 'There is no sales data to download for this selection.');
       return;
     }
-    Alert.alert('Download Completed', `Exported PDF with ${currentReportData.length} records.`);
+    Alert.alert('Download Completed', `Exported PDF report with ${currentReportData.length} record(s).`);
   };
 
   return (
     <ScrollView style={styles.tabContainer}>
-      <Header 
-        title="Reports" 
-        onOpenMenu={onOpenMenu} 
-        onOpenProfile={onOpenProfile} 
-        user={user} 
+      <Header
+        title="Reports"
+        onOpenMenu={onOpenMenu}
+        onOpenProfile={onOpenProfile}
+        user={user}
       />
       <View style={styles.contentPadding}>
-        <Text style={styles.pageTitle}>Inventory Report</Text>
-        <Text style={styles.pageSubtitle}>Stock movement breakdown & Analytics</Text>
+        <Text style={styles.pageTitle}>Inventory & Sales Report</Text>
+        <Text style={styles.pageSubtitle}>Real-time stock movement breakdown, sales & profit analytics</Text>
 
         {/* Filter Section Card */}
         <View style={styles.filterCard}>
@@ -144,8 +250,8 @@ export default function ReportsScreen({
           </View>
 
           {/* Quick Dropdown */}
-          <TouchableOpacity 
-            style={[styles.dropdownSelector, activeMode === 'QUICK' && styles.activeInputBorder]} 
+          <TouchableOpacity
+            style={[styles.dropdownSelector, activeMode === 'QUICK' && styles.activeInputBorder]}
             activeOpacity={0.8}
             onPress={() => setIsQuickFilterOpen(!isQuickFilterOpen)}
           >
@@ -161,14 +267,16 @@ export default function ReportsScreen({
                   style={[
                     styles.dropdownOption,
                     index === quickFilterOptions.length - 1 && { borderBottomWidth: 0 },
-                    quickFilter === opt && activeMode === 'QUICK' && styles.dropdownOptionSelected
+                    quickFilter === opt && activeMode === 'QUICK' && styles.dropdownOptionSelected,
                   ]}
                   onPress={() => handleSelectQuickFilter(opt)}
                 >
-                  <Text style={[
-                    styles.dropdownOptionText,
-                    quickFilter === opt && activeMode === 'QUICK' && styles.dropdownOptionTextSelected
-                  ]}>
+                  <Text
+                    style={[
+                      styles.dropdownOptionText,
+                      quickFilter === opt && activeMode === 'QUICK' && styles.dropdownOptionTextSelected,
+                    ]}
+                  >
                     {opt}
                   </Text>
                 </TouchableOpacity>
@@ -194,7 +302,9 @@ export default function ReportsScreen({
                   setActiveMode('CUSTOM');
                 }}
               >
-                <Text style={[styles.toggleBtnText, rangeType === 'DAILY' && styles.toggleBtnTextActive]}>Daily</Text>
+                <Text style={[styles.toggleBtnText, rangeType === 'DAILY' && styles.toggleBtnTextActive]}>
+                  Daily
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.toggleBtn, rangeType === 'MONTHLY' && styles.toggleBtnActive]}
@@ -203,28 +313,34 @@ export default function ReportsScreen({
                   setActiveMode('CUSTOM');
                 }}
               >
-                <Text style={[styles.toggleBtnText, rangeType === 'MONTHLY' && styles.toggleBtnTextActive]}>Monthly</Text>
+                <Text style={[styles.toggleBtnText, rangeType === 'MONTHLY' && styles.toggleBtnTextActive]}>
+                  Monthly
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.dateInputsRow}>
             <View style={styles.dateFieldFlex}>
-              <Text style={styles.subLabel}>FROM ({rangeType === 'MONTHLY' ? 'YYYY-MM' : 'YYYY-MM-DD'})</Text>
+              <Text style={styles.subLabel}>
+                FROM ({rangeType === 'MONTHLY' ? 'YYYY-MM' : 'YYYY-MM-DD'})
+              </Text>
               <TextInput
                 style={[styles.textInput, activeMode === 'CUSTOM' && styles.activeInputBorder]}
                 value={fromDate}
                 onChangeText={handleCustomFromChange}
-                placeholder={rangeType === 'MONTHLY' ? '2026-07' : '2026-08-01'}
+                placeholder={rangeType === 'MONTHLY' ? 'YYYY-MM' : 'YYYY-MM-DD'}
               />
             </View>
             <View style={styles.dateFieldFlex}>
-              <Text style={styles.subLabel}>TO ({rangeType === 'MONTHLY' ? 'YYYY-MM' : 'YYYY-MM-DD'})</Text>
+              <Text style={styles.subLabel}>
+                TO ({rangeType === 'MONTHLY' ? 'YYYY-MM' : 'YYYY-MM-DD'})
+              </Text>
               <TextInput
                 style={[styles.textInput, activeMode === 'CUSTOM' && styles.activeInputBorder]}
                 value={toDate}
                 onChangeText={handleCustomToChange}
-                placeholder={rangeType === 'MONTHLY' ? '2026-08' : '2026-08-05'}
+                placeholder={rangeType === 'MONTHLY' ? 'YYYY-MM' : 'YYYY-MM-DD'}
               />
             </View>
           </View>
@@ -236,52 +352,65 @@ export default function ReportsScreen({
 
         {/* Report Display Section */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Stock Movement Breakdown</Text>
+          <Text style={styles.sectionTitle}>Stock & Sales Movement Breakdown</Text>
           <View style={styles.badgeWrap}>
             <Text style={styles.activeRangeBadge}>{getActiveDisplayLabel()}</Text>
           </View>
 
           <View style={styles.tableContainer}>
             <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeadCell, { flex: 2 }]}>
-                {activeMode === 'QUICK' && quickFilter === 'Last Month' ? 'MONTH' : 'DATE / PERIOD'}
-              </Text>
-              <Text style={styles.tableHeadCell}>IN</Text>
-              <Text style={styles.tableHeadCell}>OUT</Text>
-              <Text style={styles.tableHeadCell}>RET.</Text>
+              <Text style={[styles.tableHeadCell, { flex: 2 }]}>DATE / PERIOD</Text>
+              <Text style={[styles.tableHeadCell, { flex: 1, textAlign: 'center' }]}>IN</Text>
+              <Text style={[styles.tableHeadCell, { flex: 1, textAlign: 'center' }]}>OUT</Text>
+              <Text style={[styles.tableHeadCell, { flex: 1, textAlign: 'center' }]}>RET</Text>
+              <Text style={[styles.tableHeadCell, { flex: 1.4, textAlign: 'right' }]}>PROFIT (PKR)</Text>
             </View>
 
             {currentReportData.length === 0 ? (
-              <View style={styles.noDataRow}>
-                <Text style={styles.noDataText}>No records found matching current selection.</Text>
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No sales recorded yet</Text>
+                <Text style={styles.emptySubtext}>Complete transactions in Dashboard POS to generate live reports.</Text>
               </View>
             ) : (
-              currentReportData.map((row, index) => (
-                <View key={row.id} style={[styles.tableRow, index === 0 && styles.tableRowHighlight]}>
-                  <Text style={[styles.tableCellBold, { flex: 2 }]} numberOfLines={1}>{row.label}</Text>
-                  <Text style={[styles.tableCell, { color: COLORS.successGreen }]}>{row.inQty}</Text>
-                  <Text style={[styles.tableCell, { color: COLORS.primaryBlue }]}>{row.outQty}</Text>
-                  <Text style={styles.tableCell}>{row.retQty}</Text>
-                </View>
-              ))
+              currentReportData.map((item, idx) => {
+                const profitAmount = item.profit || 0;
+
+                return (
+                  <View
+                    key={item.id || idx}
+                    style={[
+                      styles.tableRow,
+                      idx === currentReportData.length - 1 && { borderBottomWidth: 0 },
+                    ]}
+                  >
+                    <Text style={[styles.tableCellBold, { flex: 2 }]}>{item.label || item.date}</Text>
+                    <Text style={[styles.tableCellSuccess, { flex: 1, textAlign: 'center' }]}>
+                      +{item.inQty}
+                    </Text>
+                    <Text style={[styles.tableCellDanger, { flex: 1, textAlign: 'center' }]}>
+                      -{item.outQty}
+                    </Text>
+                    <Text style={[styles.tableCellWarning, { flex: 1, textAlign: 'center' }]}>
+                      +{item.retQty}
+                    </Text>
+                    <Text style={[styles.tableCellProfit, { flex: 1.4, textAlign: 'right' }]}>
+                      +Rs. {profitAmount.toFixed(0)}
+                    </Text>
+                  </View>
+                );
+              })
             )}
           </View>
 
-          <View style={styles.legendRow}>
-            <Text style={[styles.legendText, { color: COLORS.successGreen }]}>• In = Added</Text>
-            <Text style={[styles.legendText, { color: COLORS.primaryBlue }]}>• Out = Sold</Text>
-            <Text style={[styles.legendText, { color: COLORS.textLight }]}>• Ret. = Returned</Text>
+          {/* Action Footer Buttons */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity style={styles.printBtn} onPress={handlePrint}>
+              <Text style={styles.printBtnText}>🖨 Print Report</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.downloadBtn} onPress={handleDownload}>
+              <Text style={styles.downloadBtnText}>📥 Export PDF</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Download & Print Actions */}
-        <View style={styles.actionButtonsRow}>
-          <TouchableOpacity style={styles.downloadButton} onPress={handleDownload}>
-            <Text style={styles.downloadButtonText}>⬇ Download PDF</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.printButton} onPress={handlePrint}>
-            <Text style={styles.printButtonText}>🖨 Print Report</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
@@ -289,28 +418,27 @@ export default function ReportsScreen({
 }
 
 const styles = StyleSheet.create({
-  tabContainer: { flex: 1 },
+  tabContainer: { flex: 1, backgroundColor: COLORS.lightBackground || '#F3F4F6' },
   contentPadding: { padding: 16 },
-  pageTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.textDark },
-  pageSubtitle: { fontSize: 12, color: COLORS.textLight, marginBottom: 12 },
+  pageTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.textDark || '#111827' },
+  pageSubtitle: { fontSize: 12, color: COLORS.textLight || '#6B7280', marginBottom: 16 },
 
   filterCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.white || '#FFFFFF',
     borderRadius: 12,
-    padding: 14,
+    padding: 16,
     borderWidth: 1,
-    borderColor: COLORS.borderGray,
+    borderColor: COLORS.borderGray || '#E5E7EB',
     marginBottom: 16,
   },
-  filterCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  filterCardTitle: { fontSize: 10, fontWeight: 'bold', color: COLORS.textDark },
-  activeTag: { fontSize: 9, fontWeight: 'bold', color: COLORS.primaryBlue },
-  subLabel: { fontSize: 9, fontWeight: 'bold', color: COLORS.textLight, marginBottom: 4 },
+  filterCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  filterCardTitle: { fontSize: 11, fontWeight: 'bold', color: COLORS.textLight || '#6B7280' },
+  activeTag: { fontSize: 10, fontWeight: 'bold', color: COLORS.primaryBlue || '#2563EB' },
 
   dropdownSelector: {
-    backgroundColor: COLORS.inputBg,
+    backgroundColor: COLORS.inputBg || '#F9FAFB',
     borderWidth: 1,
-    borderColor: COLORS.borderGray,
+    borderColor: COLORS.borderGray || '#E5E7EB',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -318,82 +446,107 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  activeInputBorder: { borderColor: COLORS.primaryBlue, borderWidth: 1.5 },
-  dropdownValueText: { fontSize: 13, color: COLORS.textDark, fontWeight: '600' },
-  arrowIcon: { fontSize: 11, color: COLORS.textLight },
+  dropdownValueText: { fontSize: 13, fontWeight: '600', color: COLORS.textDark || '#111827' },
+  arrowIcon: { fontSize: 12, color: COLORS.textLight || '#6B7280' },
   dropdownMenu: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.white || '#FFFFFF',
     borderWidth: 1,
-    borderColor: COLORS.borderGray,
+    borderColor: COLORS.borderGray || '#E5E7EB',
     borderRadius: 8,
-    marginTop: 4,
-    elevation: 3,
+    marginTop: 6,
+    elevation: 4,
   },
-  dropdownOption: { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.borderGray },
-  dropdownOptionSelected: { backgroundColor: '#EFF6FF' },
-  dropdownOptionText: { fontSize: 13, color: COLORS.textDark },
-  dropdownOptionTextSelected: { color: COLORS.primaryBlue, fontWeight: 'bold' },
+  dropdownOption: { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.borderGray || '#E5E7EB' },
+  dropdownOptionSelected: { backgroundColor: COLORS.inputBg || '#F9FAFB' },
+  dropdownOptionText: { fontSize: 13, color: COLORS.textDark || '#111827' },
+  dropdownOptionTextSelected: { color: COLORS.primaryBlue || '#2563EB', fontWeight: 'bold' },
 
-  divider: { height: 1, backgroundColor: COLORS.borderGray, marginVertical: 12 },
+  divider: { height: 1, backgroundColor: COLORS.borderGray || '#E5E7EB', marginVertical: 14 },
 
-  rangeHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  toggleGroup: { flexDirection: 'row', backgroundColor: COLORS.inputBg, borderRadius: 8, padding: 2 },
-  toggleBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-  toggleBtnActive: { backgroundColor: COLORS.primaryBlue },
-  toggleBtnText: { fontSize: 11, color: COLORS.textLight },
-  toggleBtnTextActive: { color: COLORS.white, fontWeight: 'bold' },
+  rangeHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  subLabel: { fontSize: 10, fontWeight: 'bold', color: COLORS.textLight || '#6B7280' },
+  toggleGroup: { flexDirection: 'row', backgroundColor: COLORS.inputBg || '#F9FAFB', borderRadius: 6, padding: 2 },
+  toggleBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
+  toggleBtnActive: { backgroundColor: COLORS.white || '#FFFFFF', elevation: 1 },
+  toggleBtnText: { fontSize: 10, color: COLORS.textLight || '#6B7280', fontWeight: 'bold' },
+  toggleBtnTextActive: { color: COLORS.primaryBlue || '#2563EB' },
 
-  dateInputsRow: { flexDirection: 'row', gap: 10 },
+  dateInputsRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   dateFieldFlex: { flex: 1 },
   textInput: {
-    backgroundColor: COLORS.inputBg,
+    backgroundColor: COLORS.inputBg || '#F9FAFB',
     borderWidth: 1,
-    borderColor: COLORS.borderGray,
+    borderColor: COLORS.borderGray || '#E5E7EB',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
     fontSize: 12,
-    color: COLORS.textDark,
+    color: COLORS.textDark || '#111827',
+    marginTop: 4,
   },
-  resetBtn: { marginTop: 10, alignSelf: 'flex-end' },
-  resetBtnText: { fontSize: 11, color: COLORS.dangerRed, fontWeight: '600' },
+  activeInputBorder: { borderColor: COLORS.primaryBlue || '#2563EB' },
+
+  resetBtn: { alignItems: 'center', paddingVertical: 6 },
+  resetBtnText: { fontSize: 11, color: COLORS.dangerRed || '#EF4444', fontWeight: 'bold' },
 
   sectionCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.white || '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: COLORS.borderGray,
-    marginBottom: 16,
+    borderColor: COLORS.borderGray || '#E5E7EB',
   },
-  sectionTitle: { fontSize: 15, fontWeight: 'bold', color: COLORS.textDark },
-  badgeWrap: { marginTop: 6, marginBottom: 12, alignItems: 'flex-start' },
-  activeRangeBadge: { 
-    fontSize: 10, 
-    color: COLORS.primaryBlue, 
-    fontWeight: 'bold', 
-    backgroundColor: '#EFF6FF', 
-    paddingHorizontal: 8, 
-    paddingVertical: 4, 
+  sectionTitle: { fontSize: 15, fontWeight: 'bold', color: COLORS.textDark || '#111827' },
+  badgeWrap: { flexDirection: 'row', marginTop: 4, marginBottom: 14 },
+  activeRangeBadge: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: COLORS.primaryBlue || '#2563EB',
+    backgroundColor: COLORS.inputBg || '#F9FAFB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 4,
-    flexWrap: 'wrap',
   },
 
-  tableContainer: { marginTop: 4 },
-  tableHeader: { flexDirection: 'row', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: COLORS.borderGray },
-  tableHeadCell: { flex: 1, fontSize: 10, fontWeight: 'bold', color: COLORS.textLight },
-  tableRow: { flexDirection: 'row', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.borderGray },
-  tableRowHighlight: { backgroundColor: '#FEF9C3', marginHorizontal: -8, paddingHorizontal: 8, borderRadius: 4 },
-  tableCell: { flex: 1, fontSize: 12, color: COLORS.textDark },
-  tableCellBold: { fontSize: 12, fontWeight: 'bold', color: COLORS.textDark },
-  noDataRow: { paddingVertical: 16, alignItems: 'center' },
-  noDataText: { fontSize: 12, color: COLORS.textLight, fontStyle: 'italic' },
-  legendRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
-  legendText: { fontSize: 10, fontWeight: '600' },
+  tableContainer: { borderWidth: 1, borderColor: COLORS.borderGray || '#E5E7EB', borderRadius: 8, overflow: 'hidden' },
+  tableHeader: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.inputBg || '#F9FAFB',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderGray || '#E5E7EB',
+  },
+  tableHeadCell: { fontSize: 10, fontWeight: 'bold', color: COLORS.textLight || '#6B7280' },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderGray || '#E5E7EB',
+    alignItems: 'center',
+  },
+  tableCellBold: { fontSize: 12, fontWeight: 'bold', color: COLORS.textDark || '#111827' },
+  tableCellSuccess: { fontSize: 12, fontWeight: '600', color: COLORS.successGreen || '#10B981' },
+  tableCellDanger: { fontSize: 12, fontWeight: '600', color: COLORS.dangerRed || '#EF4444' },
+  tableCellWarning: { fontSize: 12, fontWeight: '600', color: COLORS.warningYellow || '#D97706' },
+  tableCellProfit: { fontSize: 12, fontWeight: 'bold', color: COLORS.successGreen || '#10B981' },
 
-  actionButtonsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
-  downloadButton: { flex: 1, backgroundColor: COLORS.primaryBlue, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
-  downloadButtonText: { color: COLORS.white, fontWeight: 'bold', fontSize: 13 },
-  printButton: { flex: 1, backgroundColor: COLORS.accentYellow, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
-  printButtonText: { color: COLORS.darkBlue, fontWeight: 'bold', fontSize: 13 },
+  emptyContainer: { paddingVertical: 20, alignItems: 'center' },
+  emptyText: { color: COLORS.textDark || '#111827', fontSize: 13, fontWeight: 'bold' },
+  emptySubtext: { color: COLORS.textLight || '#6B7280', fontSize: 11, marginTop: 2 },
+
+  actionRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  printBtn: {
+    flex: 1,
+    backgroundColor: COLORS.inputBg || '#F9FAFB',
+    borderWidth: 1,
+    borderColor: COLORS.borderGray || '#E5E7EB',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  printBtnText: { color: COLORS.textDark || '#111827', fontWeight: 'bold', fontSize: 12 },
+  downloadBtn: { flex: 1, backgroundColor: COLORS.primaryBlue || '#2563EB', paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
+  downloadBtnText: { color: COLORS.white || '#FFFFFF', fontWeight: 'bold', fontSize: 12 },
 });

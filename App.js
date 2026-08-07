@@ -21,25 +21,26 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState('SIGN_IN');
   const [activeTab, setActiveTab] = useState('DASHBOARD');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
+  // Real-time sales tracker for reports sync
+  const [salesTransactions, setSalesTransactions] = useState([]);
 
-  // 👤 Dynamic User State
+  // Dynamic User State
   const [user, setUser] = useState({
     name: 'Admin User',
     email: 'admin@artech.ph',
   });
   const [profileModalVisible, setProfileModalVisible] = useState(false);
 
-  // const [products, setProducts] = useState(INITIAL_PRODUCTS || []);
-  // const [inventoryItems, setInventoryItems] = useState(INITIAL_INVENTORY || []);
-  const [products, setProducts] = useState([]);
-  const [inventoryItems, setInventoryItems] = useState([]);
+  const [products, setProducts] = useState(INITIAL_PRODUCTS || []);
+  const [inventoryItems, setInventoryItems] = useState(INITIAL_INVENTORY || []);
+
   const [productModalVisible, setProductModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
   const [inventoryModalVisible, setInventoryModalVisible] = useState(false);
   const [editingInventory, setEditingInventory] = useState(null);
 
-  // Handle Login
   const handleSignIn = (credentials) => {
     if (credentials?.email) {
       const email = credentials.email;
@@ -54,24 +55,70 @@ export default function App() {
     setProfileModalVisible(false);
   };
 
-  // Product Actions (Syncs with Inventory)
+  // Record completed POS sales for the Reports tab
+  const handleRecordSale = (newTx) => {
+    setSalesTransactions((prev) => [newTx, ...prev]);
+  };
+
+  // Sync state when POS Terminal completes a transaction
+  const handleUpdateInventory = (updatedInventory) => {
+    setInventoryItems(updatedInventory);
+
+    setProducts((prevProducts) =>
+      (prevProducts || []).map((prod) => {
+        const match = updatedInventory.find((inv) => inv.id === prod.id);
+        return match ? { ...prod, stock: match.stock } : prod;
+      })
+    );
+  };
+
+  // Product Actions (Preserves price and costPrice across inventory)
   const handleSaveProduct = (formData) => {
     const currentProducts = products || [];
     const currentInventory = inventoryItems || [];
 
+    const numStock = Number(formData.stock) || 0;
+    const numPrice = Number(formData.price) || 0;
+    const numCost = Number(formData.costPrice) || 0;
+
+    const formattedData = {
+      ...formData,
+      stock: numStock,
+      price: numPrice,
+      costPrice: numCost,
+      profit: (numPrice - numCost).toFixed(2),
+    };
+
     if (editingProduct) {
-      setProducts(currentProducts.map((p) => (p.id === editingProduct.id ? { ...p, ...formData } : p)));
+      setProducts(
+        currentProducts.map((p) => (p.id === editingProduct.id ? { ...p, ...formattedData } : p))
+      );
       setInventoryItems(
         currentInventory.map((item) =>
-          item.id === editingProduct.id ? { ...item, name: formData.name, stock: Number(formData.stock) || 0 } : item
+          item.id === editingProduct.id
+            ? {
+                ...item,
+                name: formData.name,
+                stock: numStock,
+                price: numPrice,
+                costPrice: numCost,
+              }
+            : item
         )
       );
     } else {
       const newId = String(Date.now());
-      setProducts([...currentProducts, { id: newId, ...formData }]);
+      setProducts([...currentProducts, { id: newId, ...formattedData }]);
       setInventoryItems([
         ...currentInventory,
-        { id: newId, name: formData.name, stock: Number(formData.stock) || 0, minStock: 5 },
+        {
+          id: newId,
+          name: formData.name,
+          stock: numStock,
+          minStock: 5,
+          price: numPrice,
+          costPrice: numCost,
+        },
       ]);
     }
     setProductModalVisible(false);
@@ -84,11 +131,21 @@ export default function App() {
 
   const handleSaveInventory = (formData) => {
     const currentInventory = inventoryItems || [];
+    const numStock = Number(formData.stock) || 0;
+
     if (editingInventory) {
-      setInventoryItems(currentInventory.map((i) => (i.id === editingInventory.id ? { ...i, ...formData } : i)));
-      setProducts((products || []).map((p) => (p.id === editingInventory.id ? { ...p, stock: Number(formData.stock) || 0 } : p)));
+      setInventoryItems(
+        currentInventory.map((i) =>
+          i.id === editingInventory.id ? { ...i, ...formData, stock: numStock } : i
+        )
+      );
+      setProducts(
+        (products || []).map((p) =>
+          p.id === editingInventory.id ? { ...p, stock: numStock } : p
+        )
+      );
     } else {
-      setInventoryItems([...currentInventory, { id: String(Date.now()), ...formData }]);
+      setInventoryItems([...currentInventory, { id: String(Date.now()), stock: numStock, ...formData }]);
     }
     setInventoryModalVisible(false);
   };
@@ -146,8 +203,11 @@ export default function App() {
           onOpenMenu={() => setIsMenuOpen(true)}
           onOpenProfile={() => setProfileModalVisible(true)}
           user={user}
+          products={products || []}
           productsCount={products?.length || 0}
           inventoryItems={inventoryItems || []}
+          onUpdateInventory={handleUpdateInventory}
+          onRecordSale={handleRecordSale}
         />
       )}
 
@@ -193,10 +253,10 @@ export default function App() {
           onOpenProfile={() => setProfileModalVisible(true)}
           user={user}
           inventoryItems={inventoryItems || []}
+          salesTransactions={salesTransactions}
         />
       )}
 
-      {/* Modals */}
       <ProfileModal
         visible={profileModalVisible}
         user={user}
