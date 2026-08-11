@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
   },
   hamburgerIcon: {
     color: COLORS.white,
-    fontSize: 22,
+    fontSize: 36,
   },
   headerTitle: {
     color: COLORS.white,

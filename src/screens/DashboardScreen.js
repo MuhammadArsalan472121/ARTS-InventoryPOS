@@ -9,7 +9,11 @@ import {
   StyleSheet,
   TouchableWithoutFeedback,
   Keyboard,
+  Platform,
 } from 'react-native';
+
+import DateTimePicker from '@react-native-community/datetimepicker';
+
 import Header from '../components/Header';
 import { COLORS } from '../constants/theme';
 
@@ -26,39 +30,22 @@ export default function DashboardScreen({
   const [cart, setCart] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [completedTransaction, setCompletedTransaction] = useState(null);
 
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [completedTransaction, setCompletedTransaction] =
+    useState(null);
+
+  // ============================================================
   // SALE DATE
+  // ============================================================
+
   const [saleDate, setSaleDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Temporary date values used inside date selector
-  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
-  const [selectedMonth, setSelectedMonth] = useState(
-    new Date().getMonth()
-  );
-  const [selectedYear, setSelectedYear] = useState(
-    new Date().getFullYear()
-  );
+  const formatDateDisplay = (date) => {
+    if (!date) return '';
 
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
-  const getDaysInMonth = (month, year) => {
-    return new Date(year, month + 1, 0).getDate();
+    return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
   };
 
   const getSaleDateString = () => {
@@ -69,37 +56,24 @@ export default function DashboardScreen({
     ).padStart(2, '0')}`;
   };
 
-  const openDatePicker = () => {
-    setSelectedDay(saleDate.getDate());
-    setSelectedMonth(saleDate.getMonth());
-    setSelectedYear(saleDate.getFullYear());
-    setShowDatePicker(true);
-  };
-
-  const applySaleDate = () => {
-    const maxDays = getDaysInMonth(
-      selectedMonth,
-      selectedYear
-    );
-
-    const validDay = Math.min(selectedDay, maxDays);
-
-    const newDate = new Date(
-      selectedYear,
-      selectedMonth,
-      validDay
-    );
-
-    setSaleDate(newDate);
+  const handleSaleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
+
+    if (selectedDate) {
+      setSaleDate(selectedDate);
+    }
   };
 
-  // Helper to extract unit selling price from any field key variation
+  // ============================================================
+  // PRICE / PROFIT HELPERS
+  // ============================================================
+
   const getUnitPrice = (item) => {
     return Number(item.salesPrice ?? item.price ?? 0);
   };
 
-  // Helper to extract unit profit from form fields or fallback to (Sales Price - Retail Price)
+  // Profit is still calculated internally.
+  // It is NOT displayed anywhere on Dashboard or Receipt.
   const getUnitProfit = (item) => {
     if (
       item.profitPerItem !== undefined &&
@@ -118,6 +92,7 @@ export default function DashboardScreen({
     }
 
     const sales = getUnitPrice(item);
+
     const retailCost = Number(
       item.retailPrice ?? item.costPrice ?? 0
     );
@@ -125,7 +100,10 @@ export default function DashboardScreen({
     return sales - retailCost;
   };
 
-  // Sync products and inventory items so properties & stock are accurate
+  // ============================================================
+  // SYNC PRODUCTS + INVENTORY
+  // ============================================================
+
   const availableItems = (
     products.length > 0 ? products : inventoryItems
   ).map((prod) => {
@@ -138,20 +116,16 @@ export default function DashboardScreen({
       stock: invMatch
         ? invMatch.stock
         : prod.stock ?? 0,
+
       unitPrice: getUnitPrice(prod),
       unitProfit: getUnitProfit(prod),
     };
   });
 
-  // Calculate item profit dynamically for cart / receipt
-  const calculateItemProfit = (item) => {
-    const qty = Number(item.quantity) || 1;
-    const profitPerUnit = getUnitProfit(item);
+  // ============================================================
+  // CART CALCULATIONS
+  // ============================================================
 
-    return profitPerUnit * qty;
-  };
-
-  // Calculate item revenue dynamically
   const calculateItemRevenue = (item) => {
     const qty = Number(item.quantity) || 1;
     const price = getUnitPrice(item);
@@ -159,19 +133,63 @@ export default function DashboardScreen({
     return price * qty;
   };
 
-  // Calculate total cart profit
-  const totalProfit = cart.reduce((acc, item) => {
-    return acc + calculateItemProfit(item);
-  }, 0);
-
-  // Calculate total cart revenue
   const totalRevenue = cart.reduce((acc, item) => {
     return acc + calculateItemRevenue(item);
   }, 0);
 
-  // Add item to POS Cart
+  // Profit is calculated internally only.
+  const totalProfit = cart.reduce((acc, item) => {
+    const qty = Number(item.quantity) || 1;
+    const profitPerUnit = getUnitProfit(item);
+
+    return acc + profitPerUnit * qty;
+  }, 0);
+
+  // ============================================================
+  // INVOICE NUMBER
+  // Format:
+  // INV-YYYYMMDDHHmmss
+  //
+  // Example:
+  // INV-20260811214317
+  // ============================================================
+
+  const generateInvoiceNumber = () => {
+    const now = new Date();
+
+    const year = now.getFullYear();
+
+    const month = String(
+      now.getMonth() + 1
+    ).padStart(2, '0');
+
+    const day = String(
+      now.getDate()
+    ).padStart(2, '0');
+
+    const hour = String(
+      now.getHours()
+    ).padStart(2, '0');
+
+    const minute = String(
+      now.getMinutes()
+    ).padStart(2, '0');
+
+    const second = String(
+      now.getSeconds()
+    ).padStart(2, '0');
+
+    return `INV-${year}${month}${day}${hour}${minute}${second}`;
+  };
+
+  // ============================================================
+  // ADD TO CART
+  // ============================================================
+
   const handleAddToCart = (item) => {
-    if (item.stock <= 0) return;
+    if (Number(item.stock) <= 0) {
+      return;
+    }
 
     setCart((prevCart) => {
       const existingIndex = prevCart.findIndex(
@@ -179,14 +197,21 @@ export default function DashboardScreen({
       );
 
       if (existingIndex > -1) {
-        return prevCart.map((ci, index) =>
-          index === existingIndex
-            ? {
-                ...ci,
-                quantity: ci.quantity + 1,
-              }
-            : ci
-        );
+        return prevCart.map((ci, index) => {
+          if (index !== existingIndex) {
+            return ci;
+          }
+
+          // Do not allow quantity above available stock.
+          if (ci.quantity >= Number(item.stock)) {
+            return ci;
+          }
+
+          return {
+            ...ci,
+            quantity: ci.quantity + 1,
+          };
+        });
       }
 
       return [
@@ -200,49 +225,89 @@ export default function DashboardScreen({
 
     setSearchQuery('');
     setIsDropdownOpen(false);
+
     Keyboard.dismiss();
   };
 
-  // Modify Cart Item Quantity
+  // ============================================================
+  // CHANGE CART QUANTITY
+  // ============================================================
+
   const handleQuantityChange = (id, delta) => {
     setCart((prevCart) =>
       prevCart
         .map((item) => {
-          if (item.id === id) {
-            const newQty = item.quantity + delta;
-
-            return newQty > 0
-              ? {
-                  ...item,
-                  quantity: newQty,
-                }
-              : null;
+          if (item.id !== id) {
+            return item;
           }
 
-          return item;
+          const newQty =
+            Number(item.quantity) + delta;
+
+          if (newQty <= 0) {
+            return null;
+          }
+
+          // Do not exceed stock.
+          if (
+            newQty >
+            Number(item.stock)
+          ) {
+            return item;
+          }
+
+          return {
+            ...item,
+            quantity: newQty,
+          };
         })
         .filter(Boolean)
     );
   };
 
-  // Process Checkout
+  // ============================================================
+  // CHECKOUT
+  // ============================================================
+
   const handleCheckout = () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0) {
+      return;
+    }
+
+    // Generate invoice automatically.
+    // User cannot edit this number.
+    const invoiceNumber =
+      generateInvoiceNumber();
 
     const txData = {
+      // Internal transaction ID
       id: String(Date.now()),
+
+      // Human-readable invoice number
+      invoiceNumber,
+
       items: [...cart],
+
       totalRevenue,
-      totalProfit,
 
       // IMPORTANT:
-      // Reports uses YYYY-MM-DD
+      // Profit remains stored internally for Reports.
+      // It is NOT displayed on Dashboard or Receipt.
+      totalProfit,
+
+      // Selected sale date
       date: getSaleDateString(),
+
+      // Actual checkout timestamp
+      createdAt: new Date().toISOString(),
     };
 
-    // Deduct stock in inventory
-    const updatedInventory = inventoryItems.map(
-      (invItem) => {
+    // ========================================================
+    // DEDUCT INVENTORY
+    // ========================================================
+
+    const updatedInventory =
+      inventoryItems.map((invItem) => {
         const cartMatch = cart.find(
           (c) => c.id === invItem.id
         );
@@ -250,53 +315,86 @@ export default function DashboardScreen({
         if (cartMatch) {
           return {
             ...invItem,
+
             stock: Math.max(
               0,
               Number(invItem.stock) -
-                cartMatch.quantity
+                Number(cartMatch.quantity)
             ),
           };
         }
 
         return invItem;
-      }
-    );
+      });
 
     if (onUpdateInventory) {
       onUpdateInventory(updatedInventory);
     }
 
-    // Record sales transaction into App state
+    // ========================================================
+    // SAVE TRANSACTION TO APP STATE
+    // ========================================================
+
     if (onRecordSale) {
       onRecordSale(txData);
     }
 
+    // Show receipt
     setCompletedTransaction(txData);
     setShowReceipt(true);
+
+    // Clear cart
     setCart([]);
   };
 
-  const filteredItems = availableItems.filter((item) =>
-    (item.name || item.productName || '')
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
+  // ============================================================
+  // SEARCH
+  // ============================================================
 
-  const lowStockCount = availableItems.filter(
-    (item) => (Number(item.stock) || 0) <= 5
-  ).length;
+  const filteredItems =
+    availableItems.filter((item) =>
+      (
+        item.name ||
+        item.productName ||
+        ''
+      )
+        .toLowerCase()
+        .includes(
+          searchQuery.toLowerCase()
+        )
+    );
+
+  // ============================================================
+  // LOW STOCK
+  // ============================================================
+
+  const lowStockCount =
+    availableItems.filter(
+      (item) =>
+        (Number(item.stock) || 0) <= 5
+    ).length;
+
+  // ============================================================
+  // UI
+  // ============================================================
 
   return (
     <TouchableWithoutFeedback
-      onPress={() => setIsDropdownOpen(false)}
+      onPress={() =>
+        setIsDropdownOpen(false)
+      }
     >
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* ====================================================
+            HEADER
+        ==================================================== */}
+
         <Header
-          title="Dashboard POS"
+          title="POS Dashboard"
           onOpenMenu={onOpenMenu}
           onOpenProfile={onOpenProfile}
           user={user}
@@ -304,8 +402,12 @@ export default function DashboardScreen({
 
         <View style={styles.contentPadding}>
 
-          {/* KPI Metrics Summary Cards */}
+          {/* ==================================================
+              KPI CARDS
+          ================================================== */}
+
           <View style={styles.kpiGrid}>
+
             <View style={styles.kpiCard}>
               <Text style={styles.kpiLabel}>
                 PRODUCTS
@@ -335,6 +437,7 @@ export default function DashboardScreen({
                 {lowStockCount}
               </Text>
             </View>
+
           </View>
 
           {/* ==================================================
@@ -342,27 +445,58 @@ export default function DashboardScreen({
           ================================================== */}
 
           <View style={styles.saleDateContainer}>
+
             <Text style={styles.saleDateLabel}>
               SALE DATE
             </Text>
 
             <TouchableOpacity
               style={styles.saleDateButton}
-              onPress={openDatePicker}
+              onPress={() =>
+                setShowDatePicker(true)
+              }
             >
               <Text style={styles.saleDateText}>
-                {saleDate.toLocaleDateString()}
+                📅 {formatDateDisplay(saleDate)}
               </Text>
 
               <Text style={styles.changeDateText}>
                 Change Date
               </Text>
             </TouchableOpacity>
+
+            {/* SAME CALENDAR APPROACH AS YOUR OTHER PAGE */}
+            {showDatePicker && (
+              <DateTimePicker
+                value={saleDate}
+                mode="date"
+                display={
+                  Platform.OS === 'ios'
+                    ? 'compact'
+                    : 'calendar'
+                }
+                onChange={
+                  handleSaleDateChange
+                }
+                maximumDate={
+                  new Date(2035, 11, 31)
+                }
+                minimumDate={
+                  new Date(2000, 0, 1)
+                }
+              />
+            )}
+
           </View>
 
-          {/* Quick Search Dropdown Container */}
+          {/* ==================================================
+              SEARCH
+          ================================================== */}
+
           <View
-            style={styles.searchSectionContainer}
+            style={
+              styles.searchSectionContainer
+            }
           >
             <Text style={styles.sectionTitle}>
               Quick Item Search
@@ -382,124 +516,153 @@ export default function DashboardScreen({
               }
             />
 
-            {/* Dropdown Menu Overlay */}
             {isDropdownOpen && (
-              <View style={styles.dropdownMenu}>
+              <View
+                style={styles.dropdownMenu}
+              >
                 <ScrollView
                   nestedScrollEnabled
-                  style={{ maxHeight: 220 }}
+                  style={{
+                    maxHeight: 220,
+                  }}
                   keyboardShouldPersistTaps="handled"
                 >
-                  {filteredItems.length === 0 ? (
+
+                  {filteredItems.length ===
+                  0 ? (
                     <Text
-                      style={styles.noResultsText}
+                      style={
+                        styles.noResultsText
+                      }
                     >
                       No matching products found
                     </Text>
                   ) : (
-                    filteredItems.map((item) => {
-                      const price =
-                        getUnitPrice(item);
+                    filteredItems.map(
+                      (item) => {
+                        const price =
+                          getUnitPrice(item);
 
-                      const profit =
-                        getUnitProfit(item);
+                        const isOutOfStock =
+                          Number(
+                            item.stock
+                          ) <= 0;
 
-                      const isOutOfStock =
-                        item.stock <= 0;
-
-                      return (
-                        <TouchableOpacity
-                          key={item.id}
-                          style={[
-                            styles.dropdownItem,
-                            isOutOfStock &&
-                              styles.disabledDropdownItem,
-                          ]}
-                          disabled={isOutOfStock}
-                          onPress={() =>
-                            handleAddToCart(item)
-                          }
-                          activeOpacity={0.7}
-                        >
-                          <View
-                            style={{ flex: 1 }}
-                          >
-                            <Text
-                              style={
-                                styles.dropdownItemTitle
-                              }
-                            >
-                              {item.name ||
-                                item.productName}
-                            </Text>
-
-                            <Text
-                              style={
-                                styles.dropdownItemSub
-                              }
-                            >
-                              Stock: {item.stock}{' '}
-                              units • Profit: +Rs.{' '}
-                              {profit.toFixed(2)}
-                            </Text>
-                          </View>
-
-                          <View
-                            style={
-                              styles.dropdownPriceBadge
+                        return (
+                          <TouchableOpacity
+                            key={item.id}
+                            style={[
+                              styles.dropdownItem,
+                              isOutOfStock &&
+                                styles.disabledDropdownItem,
+                            ]}
+                            disabled={
+                              isOutOfStock
                             }
+                            onPress={() =>
+                              handleAddToCart(
+                                item
+                              )
+                            }
+                            activeOpacity={0.7}
                           >
-                            <Text
-                              style={
-                                styles.dropdownPriceText
-                              }
-                            >
-                              Rs.{' '}
-                              {price.toFixed(2)}
-                            </Text>
 
-                            {isOutOfStock ? (
+                            <View
+                              style={{
+                                flex: 1,
+                              }}
+                            >
                               <Text
                                 style={
-                                  styles.outOfStockText
+                                  styles.dropdownItemTitle
                                 }
                               >
-                                Out of stock
+                                {item.name ||
+                                  item.productName}
                               </Text>
-                            ) : (
+
                               <Text
-                                style={styles.addText}
+                                style={
+                                  styles.dropdownItemSub
+                                }
                               >
-                                + Add to Cart
+                                Stock:{' '}
+                                {item.stock}{' '}
+                                units
                               </Text>
-                            )}
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })
+                            </View>
+
+                            <View
+                              style={
+                                styles.dropdownPriceBadge
+                              }
+                            >
+                              <Text
+                                style={
+                                  styles.dropdownPriceText
+                                }
+                              >
+                                Rs.{' '}
+                                {price.toFixed(
+                                  2
+                                )}
+                              </Text>
+
+                              {isOutOfStock ? (
+                                <Text
+                                  style={
+                                    styles.outOfStockText
+                                  }
+                                >
+                                  Out of stock
+                                </Text>
+                              ) : (
+                                <Text
+                                  style={
+                                    styles.addText
+                                  }
+                                >
+                                  + Add to Cart
+                                </Text>
+                              )}
+                            </View>
+
+                          </TouchableOpacity>
+                        );
+                      }
+                    )
                   )}
+
                 </ScrollView>
               </View>
             )}
           </View>
 
-          {/* Cart / POS Order Summary Section */}
+          {/* ==================================================
+              CART
+          ================================================== */}
+
           <View style={styles.cartContainer}>
+
             <Text style={styles.sectionTitle}>
               Active Transaction Cart
             </Text>
 
             {cart.length === 0 ? (
-              <Text style={styles.emptyCartText}>
+              <Text
+                style={
+                  styles.emptyCartText
+                }
+              >
                 No items added to current sale.
               </Text>
             ) : (
               cart.map((item) => {
-                const itemProfit =
-                  calculateItemProfit(item);
 
                 const itemTotal =
-                  calculateItemRevenue(item);
+                  calculateItemRevenue(
+                    item
+                  );
 
                 const price =
                   getUnitPrice(item);
@@ -509,9 +672,16 @@ export default function DashboardScreen({
                     key={item.id}
                     style={styles.cartItem}
                   >
-                    <View style={{ flex: 1 }}>
+
+                    <View
+                      style={{
+                        flex: 1,
+                      }}
+                    >
                       <Text
-                        style={styles.cartItemName}
+                        style={
+                          styles.cartItemName
+                        }
                       >
                         {item.name ||
                           item.productName}
@@ -522,23 +692,17 @@ export default function DashboardScreen({
                           styles.cartItemDetails
                         }
                       >
-                        Rs. {price.toFixed(2)} ×{' '}
+                        Rs.{' '}
+                        {price.toFixed(2)} ×{' '}
                         {item.quantity} = Rs.{' '}
                         {itemTotal.toFixed(2)}
-                      </Text>
-
-                      <Text
-                        style={
-                          styles.cartItemProfit
-                        }
-                      >
-                        Profit: +Rs.{' '}
-                        {itemProfit.toFixed(2)}
                       </Text>
                     </View>
 
                     <View
-                      style={styles.qtyControlRow}
+                      style={
+                        styles.qtyControlRow
+                      }
                     >
                       <TouchableOpacity
                         style={styles.qtyBtn}
@@ -558,7 +722,9 @@ export default function DashboardScreen({
                         </Text>
                       </TouchableOpacity>
 
-                      <Text style={styles.qtyText}>
+                      <Text
+                        style={styles.qtyText}
+                      >
                         {item.quantity}
                       </Text>
 
@@ -580,32 +746,35 @@ export default function DashboardScreen({
                         </Text>
                       </TouchableOpacity>
                     </View>
+
                   </View>
                 );
               })
             )}
 
-            {/* Dynamic Totals Panel */}
+            {/* ==================================================
+                TOTALS
+                NO PROFIT SHOWN HERE
+            ================================================== */}
+
             <View style={styles.totalsBox}>
+
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>
+                <Text
+                  style={
+                    styles.totalLabel
+                  }
+                >
                   Total Sales Amount:
                 </Text>
 
-                <Text style={styles.totalValue}>
+                <Text
+                  style={
+                    styles.totalValue
+                  }
+                >
                   Rs.{' '}
                   {totalRevenue.toFixed(2)}
-                </Text>
-              </View>
-
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>
-                  Total Profit Recorded:
-                </Text>
-
-                <Text style={styles.profitValue}>
-                  +Rs.{' '}
-                  {totalProfit.toFixed(2)}
                 </Text>
               </View>
 
@@ -616,257 +785,92 @@ export default function DashboardScreen({
                     styles.disabledBtn,
                 ]}
                 onPress={handleCheckout}
-                disabled={cart.length === 0}
+                disabled={
+                  cart.length === 0
+                }
               >
                 <Text
-                  style={styles.checkoutBtnText}
+                  style={
+                    styles.checkoutBtnText
+                  }
                 >
                   Complete Sale
                 </Text>
               </TouchableOpacity>
+
             </View>
+
           </View>
+
         </View>
 
         {/* ======================================================
-            DATE SELECTOR MODAL
+            SALES RECEIPT
+            NO PROFIT DISPLAYED
         ====================================================== */}
 
-        <Modal
-          visible={showDatePicker}
-          transparent
-          animationType="fade"
-          onRequestClose={() =>
-            setShowDatePicker(false)
-          }
-        >
-          <View style={styles.dateModalOverlay}>
-            <View style={styles.dateModalCard}>
-
-              <Text style={styles.dateModalTitle}>
-                Select Sale Date
-              </Text>
-
-              <Text
-                style={styles.dateModalSubtitle}
-              >
-                Choose day, month and year
-              </Text>
-
-              {/* DAY */}
-              <Text style={styles.dateLabel}>
-                Day
-              </Text>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={
-                  false
-                }
-                style={styles.dateScroll}
-              >
-                {Array.from(
-                  {
-                    length: getDaysInMonth(
-                      selectedMonth,
-                      selectedYear
-                    ),
-                  },
-                  (_, index) => index + 1
-                ).map((day) => (
-                  <TouchableOpacity
-                    key={day}
-                    style={[
-                      styles.dateOption,
-                      selectedDay === day &&
-                        styles.dateOptionSelected,
-                    ]}
-                    onPress={() =>
-                      setSelectedDay(day)
-                    }
-                  >
-                    <Text
-                      style={[
-                        styles.dateOptionText,
-                        selectedDay === day &&
-                          styles.dateOptionTextSelected,
-                      ]}
-                    >
-                      {day}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              {/* MONTH */}
-              <Text style={styles.dateLabel}>
-                Month
-              </Text>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={
-                  false
-                }
-                style={styles.dateScroll}
-              >
-                {months.map(
-                  (month, index) => (
-                    <TouchableOpacity
-                      key={month}
-                      style={[
-                        styles.monthOption,
-                        selectedMonth ===
-                          index &&
-                          styles.dateOptionSelected,
-                      ]}
-                      onPress={() =>
-                        setSelectedMonth(index)
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.dateOptionText,
-                          selectedMonth ===
-                            index &&
-                            styles.dateOptionTextSelected,
-                        ]}
-                      >
-                        {month.substring(
-                          0,
-                          3
-                        )}
-                      </Text>
-                    </TouchableOpacity>
-                  )
-                )}
-              </ScrollView>
-
-              {/* YEAR */}
-              <Text style={styles.dateLabel}>
-                Year
-              </Text>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={
-                  false
-                }
-                style={styles.dateScroll}
-              >
-                {Array.from(
-                  { length: 21 },
-                  (_, index) =>
-                    new Date().getFullYear() -
-                    10 +
-                    index
-                ).map((year) => (
-                  <TouchableOpacity
-                    key={year}
-                    style={[
-                      styles.yearOption,
-                      selectedYear === year &&
-                        styles.dateOptionSelected,
-                    ]}
-                    onPress={() =>
-                      setSelectedYear(year)
-                    }
-                  >
-                    <Text
-                      style={[
-                        styles.dateOptionText,
-                        selectedYear ===
-                          year &&
-                          styles.dateOptionTextSelected,
-                      ]}
-                    >
-                      {year}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <Text style={styles.selectedDatePreview}>
-                Selected: {selectedDay}{' '}
-                {months[selectedMonth]}{' '}
-                {selectedYear}
-              </Text>
-
-              <View
-                style={styles.dateButtonRow}
-              >
-                <TouchableOpacity
-                  style={styles.cancelDateBtn}
-                  onPress={() =>
-                    setShowDatePicker(false)
-                  }
-                >
-                  <Text
-                    style={
-                      styles.cancelDateText
-                    }
-                  >
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.applyDateBtn}
-                  onPress={applySaleDate}
-                >
-                  <Text
-                    style={
-                      styles.applyDateText
-                    }
-                  >
-                    Apply Date
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Sale Receipt Modal */}
         <Modal
           visible={showReceipt}
           transparent
           animationType="slide"
+          onRequestClose={() =>
+            setShowReceipt(false)
+          }
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.receiptCard}>
+          <View
+            style={styles.modalOverlay}
+          >
+
+            <View
+              style={styles.receiptCard}
+            >
+
+              {/* FIXED HEADER - NO OVERLAPPING */}
               <View
-                style={styles.receiptHeaderRow}
+                style={
+                  styles.receiptHeader
+                }
               >
+
                 <Text
-                  style={styles.receiptTitle}
+                  style={
+                    styles.receiptTitle
+                  }
                 >
                   OFFICIAL SALES RECEIPT
                 </Text>
 
                 <Text
-                  style={styles.receiptInv}
+                  style={
+                    styles.receiptInvoice
+                  }
                 >
-                  INV-782449
+                  Invoice No:{' '}
+                  {completedTransaction?.invoiceNumber}
                 </Text>
+
               </View>
 
               <Text
-                style={styles.receiptDate}
+                style={
+                  styles.receiptDate
+                }
               >
-                Date:{' '}
+                Sale Date:{' '}
                 {completedTransaction?.date}
               </Text>
 
               <ScrollView
-                style={styles.receiptList}
+                style={
+                  styles.receiptList
+                }
+                showsVerticalScrollIndicator={
+                  false
+                }
               >
-                {completedTransaction?.items.map(
+
+                {completedTransaction?.items?.map(
                   (item) => {
-                    const lineProfit =
-                      calculateItemProfit(
-                        item
-                      );
 
                     const lineTotal =
                       calculateItemRevenue(
@@ -886,9 +890,13 @@ export default function DashboardScreen({
                           styles.receiptRow
                         }
                       >
+
                         <View
-                          style={{ flex: 1 }}
+                          style={{
+                            flex: 1,
+                          }}
                         >
+
                           <Text
                             style={
                               styles.receiptItemName
@@ -904,50 +912,41 @@ export default function DashboardScreen({
                             }
                           >
                             Qty Sold:{' '}
-                            {item.quantity} |
-                            Remaining:{' '}
+                            {item.quantity}{' '}
+                            | Remaining:{' '}
                             {remainingStock}
                           </Text>
+
                         </View>
 
-                        <View
-                          style={{
-                            alignItems:
-                              'flex-end',
-                          }}
+                        <Text
+                          style={
+                            styles.receiptItemPrice
+                          }
                         >
-                          <Text
-                            style={
-                              styles.receiptItemPrice
-                            }
-                          >
-                            Rs.{' '}
-                            {lineTotal.toFixed(
-                              2
-                            )}
-                          </Text>
+                          Rs.{' '}
+                          {lineTotal.toFixed(
+                            2
+                          )}
+                        </Text>
 
-                          <Text
-                            style={
-                              styles.receiptItemProfit
-                            }
-                          >
-                            Profit: +Rs.{' '}
-                            {lineProfit.toFixed(
-                              2
-                            )}
-                          </Text>
-                        </View>
                       </View>
                     );
                   }
                 )}
+
               </ScrollView>
 
+              {/* RECEIPT TOTAL - NO PROFIT */}
               <View
-                style={styles.receiptSummary}
+                style={
+                  styles.receiptSummary
+                }
               >
-                <View style={styles.totalRow}>
+
+                <View
+                  style={styles.totalRow}
+                >
                   <Text
                     style={
                       styles.receiptSummaryLabel
@@ -957,33 +956,17 @@ export default function DashboardScreen({
                   </Text>
 
                   <Text
-                    style={styles.totalValue}
-                  >
-                    Rs.{' '}
-                    {completedTransaction?.totalRevenue.toFixed(
-                      2
-                    )}
-                  </Text>
-                </View>
-
-                <View style={styles.totalRow}>
-                  <Text
                     style={
-                      styles.receiptSummaryLabel
+                      styles.totalValue
                     }
                   >
-                    TOTAL PROFIT RECORDED:
-                  </Text>
-
-                  <Text
-                    style={styles.profitValue}
-                  >
-                    +Rs.{' '}
-                    {completedTransaction?.totalProfit.toFixed(
+                    Rs.{' '}
+                    {completedTransaction?.totalRevenue?.toFixed(
                       2
                     )}
                   </Text>
                 </View>
+
               </View>
 
               <TouchableOpacity
@@ -1002,13 +985,20 @@ export default function DashboardScreen({
                   Close & Return to Dashboard
                 </Text>
               </TouchableOpacity>
+
             </View>
+
           </View>
         </Modal>
+
       </ScrollView>
     </TouchableWithoutFeedback>
   );
 }
+
+// ============================================================
+// STYLES
+// ============================================================
 
 const styles = StyleSheet.create({
   container: {
@@ -1019,6 +1009,10 @@ const styles = StyleSheet.create({
   contentPadding: {
     padding: 16,
   },
+
+  // ==========================================================
+  // KPI
+  // ==========================================================
 
   kpiGrid: {
     flexDirection: 'row',
@@ -1049,9 +1043,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  // ============================================================
+  // ==========================================================
   // SALE DATE
-  // ============================================================
+  // ==========================================================
 
   saleDateContainer: {
     backgroundColor: '#FFFFFF',
@@ -1092,138 +1086,9 @@ const styles = StyleSheet.create({
     color: '#2563EB',
   },
 
-  dateModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-
-  dateModalCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 18,
-    maxHeight: '80%',
-  },
-
-  dateModalTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#111827',
-  },
-
-  dateModalSubtitle: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 3,
-    marginBottom: 14,
-  },
-
-  dateLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#374151',
-    marginBottom: 6,
-    marginTop: 6,
-  },
-
-  dateScroll: {
-    marginBottom: 4,
-  },
-
-  dateOption: {
-    minWidth: 42,
-    height: 38,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 6,
-  },
-
-  monthOption: {
-    minWidth: 58,
-    height: 38,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 6,
-  },
-
-  yearOption: {
-    minWidth: 65,
-    height: 38,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 6,
-  },
-
-  dateOptionSelected: {
-    backgroundColor: '#2563EB',
-  },
-
-  dateOptionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#374151',
-  },
-
-  dateOptionTextSelected: {
-    color: '#FFFFFF',
-  },
-
-  selectedDatePreview: {
-    marginTop: 14,
-    padding: 10,
-    backgroundColor: '#EFF6FF',
-    borderRadius: 8,
-    color: '#2563EB',
-    fontSize: 13,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-
-  dateButtonRow: {
-    flexDirection: 'row',
-    marginTop: 14,
-    gap: 8,
-  },
-
-  cancelDateBtn: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-    paddingVertical: 11,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-
-  cancelDateText: {
-    color: '#374151',
-    fontWeight: '800',
-  },
-
-  applyDateBtn: {
-    flex: 1,
-    backgroundColor: '#2563EB',
-    paddingVertical: 11,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-
-  applyDateText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-  },
-
-  // ============================================================
+  // ==========================================================
   // SEARCH
-  // ============================================================
+  // ==========================================================
 
   searchSectionContainer: {
     position: 'relative',
@@ -1324,9 +1189,9 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // ============================================================
+  // ==========================================================
   // CART
-  // ============================================================
+  // ==========================================================
 
   cartContainer: {
     backgroundColor: '#FFFFFF',
@@ -1361,12 +1226,6 @@ const styles = StyleSheet.create({
   cartItemDetails: {
     fontSize: 12,
     color: '#6B7280',
-  },
-
-  cartItemProfit: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#10B981',
   },
 
   qtyControlRow: {
@@ -1420,12 +1279,6 @@ const styles = StyleSheet.create({
     color: '#2563EB',
   },
 
-  profitValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#10B981',
-  },
-
   checkoutBtn: {
     backgroundColor: '#2563EB',
     paddingVertical: 12,
@@ -1444,9 +1297,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  // ============================================================
+  // ==========================================================
   // RECEIPT
-  // ============================================================
+  // ==========================================================
 
   modalOverlay: {
     flex: 1,
@@ -1457,34 +1310,36 @@ const styles = StyleSheet.create({
 
   receiptCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
     maxHeight: '80%',
+    width: '100%',
   },
 
-  receiptHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  // IMPORTANT:
+  // Invoice is now BELOW title instead of beside it.
+  receiptHeader: {
+    width: '100%',
+    marginBottom: 6,
   },
 
   receiptTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '900',
     color: '#111827',
   },
 
-  receiptInv: {
+  receiptInvoice: {
     fontSize: 12,
     fontWeight: '800',
     color: '#2563EB',
+    marginTop: 5,
   },
 
   receiptDate: {
     fontSize: 11,
     color: '#6B7280',
     marginBottom: 12,
-    marginTop: 2,
   },
 
   receiptList: {
@@ -1494,6 +1349,7 @@ const styles = StyleSheet.create({
   receiptRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
@@ -1515,13 +1371,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#111827',
-  },
-
-  receiptItemProfit: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#10B981',
-    marginTop: 2,
+    marginLeft: 10,
   },
 
   receiptSummary: {
