@@ -1,6 +1,13 @@
+
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView, StyleSheet, Alert } from 'react-native';
 import { COLORS } from '../constants/theme';
+
+import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+
+import app, { db } from '../../firebaseConfig';
+const auth = getAuth(app);
 
 export default function SignUpScreen({ onSignUpSuccess, onNavigateSignIn }) {
   const [name, setName] = useState('');
@@ -22,34 +29,74 @@ export default function SignUpScreen({ onSignUpSuccess, onNavigateSignIn }) {
     return pass.length >= 8 && specialCharRegex.test(pass);
   };
 
-  const handlePressSignUp = () => {
-    setErrorMessage('');
+  const handlePressSignUp = async () => {
+  setErrorMessage('');
 
-    if (!name || !email || !password || !confirmPassword) {
-      setErrorMessage('Please fill in all required fields.');
-      return;
-    }
+  if (!name || !email || !password || !confirmPassword) {
+    setErrorMessage('Please fill in all required fields.');
+    return;
+  }
 
-    if (!validateEmail(email.trim())) {
+  if (!validateEmail(email.trim())) {
+    setErrorMessage('Please enter a valid email address.');
+    return;
+  }
+
+  if (!validatePassword(password)) {
+    setErrorMessage(
+      'Password must be at least 8 characters and contain at least 1 special character (!@#$%^&*).'
+    );
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    setErrorMessage('Passwords do not match.');
+    return;
+  }
+
+  try {
+    const userCredential = await createUserWithEmailAndPassword(
+  auth,
+  email.trim(),
+  password
+);
+
+const user = userCredential.user;
+
+console.log('Firebase user created:', user.uid);
+
+// Save additional user information in Firestore
+await setDoc(doc(db, 'users', user.uid), {
+  name: name.trim(),
+  email: email.trim(),
+  phone: phone.trim(),
+  role: 'Admin',
+  createdAt: serverTimestamp(),
+});
+
+console.log('User profile saved to Firestore');
+
+Alert.alert(
+  'Success',
+  'Account created successfully.'
+);
+
+onSignUpSuccess();
+
+  } catch (error) {
+    console.log('Firebase signup error:', error);
+
+    if (error.code === 'auth/email-already-in-use') {
+      setErrorMessage('This email is already registered.');
+    } else if (error.code === 'auth/invalid-email') {
       setErrorMessage('Please enter a valid email address.');
-      return;
+    } else if (error.code === 'auth/weak-password') {
+      setErrorMessage('Password is too weak.');
+    } else {
+      setErrorMessage('Unable to create account. Please try again.');
     }
-
-    if (!validatePassword(password)) {
-      setErrorMessage('Password must be at least 8 characters and contain at least 1 special character (!@#$%^&*).');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setErrorMessage('Passwords do not match.');
-      return;
-    }
-
-    setErrorMessage('');
-    Alert.alert('Success', 'Account created successfully.');
-    onSignUpSuccess();
-  };
-
+  }
+};
   return (
     <SafeAreaView style={styles.authContainer}>
       <ScrollView style={{ flex: 1, width: '100%' }}>

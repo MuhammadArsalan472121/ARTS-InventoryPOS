@@ -2,17 +2,50 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, SafeAreaView, StyleSheet, Alert } from 'react-native';
 import { COLORS } from '../constants/theme';
 
+import { sendPasswordResetEmail, getAuth } from 'firebase/auth';
+import app from '../../firebaseConfig';
+
+const auth = getAuth(app);
+
 export default function RecoverPasswordScreen({ onSendReset, onNavigateSignIn }) {
   const [email, setEmail] = useState('');
 
-  const handleSend = () => {
-    if (!email) {
-      Alert.alert('Error', 'Please enter your email address.');
-      return;
-    }
-    Alert.alert('Success', 'Password reset link sent to your email.');
+  const handleSend = async () => {
+  const cleanEmail = email.trim();
+
+  if (!cleanEmail) {
+    Alert.alert('Error', 'Please enter your email address.');
+    return;
+  }
+
+  try {
+    await sendPasswordResetEmail(auth, cleanEmail);
+
+    Alert.alert(
+      'Success',
+      'Password reset link has been sent to your email.'
+    );
+
     onSendReset();
-  };
+
+  } catch (error) {
+    console.log('Password reset error:', error);
+
+    if (error.code === 'auth/invalid-email') {
+      Alert.alert('Error', 'Please enter a valid email address.');
+    } else if (error.code === 'auth/user-not-found') {
+      Alert.alert(
+        'Error',
+        'No account was found with this email address.'
+      );
+    } else {
+      Alert.alert(
+        'Error',
+        'Unable to send password reset email. Please try again.'
+      );
+    }
+  }
+};
 
   return (
     <SafeAreaView style={styles.authContainer}>

@@ -2,9 +2,15 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, SafeAreaView, StatusBar, StyleSheet, Alert } from 'react-native';
 import { COLORS } from '../constants/theme';
 
+import { signInWithEmailAndPassword, getAuth } from 'firebase/auth';
+import app from '../../firebaseConfig';
+
+const auth = getAuth(app);
+
 export default function SignInScreen({ onSignIn, onNavigateSignUp, onNavigateRecover }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   // Validation functions
@@ -13,35 +19,67 @@ export default function SignInScreen({ onSignIn, onNavigateSignUp, onNavigateRec
     return emailRegex.test(emailStr);
   };
 
-  const handlePressSignIn = () => {
-    setErrorMessage('');
+  const handlePressSignIn = async () => {
+  setErrorMessage('');
 
-    if (!email || !password) {
-      setErrorMessage('Please fill in all fields.');
-      return;
-    }
+  if (!email || !password) {
+    setErrorMessage('Please fill in all fields.');
+    return;
+  }
 
-    if (!validateEmail(email.trim())) {
-      setErrorMessage('Please enter a valid email address.');
-      return;
-    }
+  if (!validateEmail(email.trim())) {
+    setErrorMessage('Please enter a valid email address.');
+    return;
+  }
 
-    if (password.length < 8) {
-      setErrorMessage('Password must be at least 8 characters long.');
-      return;
-    }
+  if (password.length < 8) {
+    setErrorMessage('Password must be at least 8 characters long.');
+    return;
+  }
 
-    // Clear error and proceed
-   // Extract a default name from the email (e.g. "john" from "john@email.com")
-    const cleanEmail = email.trim();
+  const cleanEmail = email.trim();
+
+  try {
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      cleanEmail,
+      password
+    );
+
+    const user = userCredential.user;
+
+    console.log('Firebase login successful:', user.uid);
+
+    // Keep your existing navigation
     const extractedName = cleanEmail.split('@')[0];
-    const formattedName = extractedName.charAt(0).toUpperCase() + extractedName.slice(1);
+    const formattedName =
+      extractedName.charAt(0).toUpperCase() +
+      extractedName.slice(1);
 
-    onSignIn({ 
-      email: cleanEmail, 
-      name: formattedName 
+    onSignIn({
+      email: user.email,
+      name: formattedName,
+      uid: user.uid,
     });
-  };
+
+  } catch (error) {
+    console.log('Firebase login error:', error);
+
+    if (
+      error.code === 'auth/invalid-credential' ||
+      error.code === 'auth/wrong-password' ||
+      error.code === 'auth/user-not-found'
+    ) {
+      setErrorMessage('Incorrect email or password.');
+    } else if (error.code === 'auth/invalid-email') {
+      setErrorMessage('Please enter a valid email address.');
+    } else if (error.code === 'auth/too-many-requests') {
+      setErrorMessage('Too many attempts. Please try again later.');
+    } else {
+      setErrorMessage('Unable to sign in. Please try again.');
+    }
+  }
+};
 
   return (
     <SafeAreaView style={styles.authContainer}>
@@ -76,13 +114,27 @@ export default function SignInScreen({ onSignIn, onNavigateSignUp, onNavigateRec
         />
 
         <Text style={styles.inputLabel}>PASSWORD</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Password"
-          secureTextEntry
-          value={password}
-          onChangeText={(val) => { setPassword(val); setErrorMessage(''); }}
-        />
+        <View style={styles.passwordContainer}>
+  <TextInput
+    style={styles.passwordInput}
+    placeholder="Password"
+    secureTextEntry={!showPassword}
+    value={password}
+    onChangeText={(val) => {
+      setPassword(val);
+      setErrorMessage('');
+    }}
+  />
+
+  <TouchableOpacity
+    style={styles.passwordToggle}
+    onPress={() => setShowPassword(!showPassword)}
+  >
+    <Text style={styles.passwordToggleText}>
+      {showPassword ? 'Hide' : 'View'}
+    </Text>
+  </TouchableOpacity>
+</View>
 
         <TouchableOpacity style={styles.forgotButton} onPress={onNavigateRecover}>
           <Text style={styles.forgotText}>Forgot password?</Text>
@@ -186,6 +238,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textDark,
   },
+  passwordContainer: {
+  backgroundColor: COLORS.inputBg,
+  borderWidth: 1,
+  borderColor: COLORS.borderGray,
+  borderRadius: 8,
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+passwordInput: {
+  flex: 1,
+  paddingHorizontal: 12,
+  paddingVertical: 10,
+  fontSize: 14,
+  color: COLORS.textDark,
+},
+
+passwordToggle: {
+  paddingHorizontal: 12,
+},
+
+passwordToggleText: {
+  color: COLORS.primaryBlue,
+  fontSize: 12,
+  fontWeight: '600',
+},
   forgotButton: {
     alignSelf: 'flex-end',
     marginTop: 8,
