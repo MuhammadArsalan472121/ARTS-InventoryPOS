@@ -1,15 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   StatusBar,
   StyleSheet,
+  Alert,
 } from 'react-native';
 
-import { COLORS } from './src/constants/theme';
 import {
-  INITIAL_PRODUCTS,
-  INITIAL_INVENTORY,
-} from './src/mock/initialData';
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+} from 'firebase/firestore';
+
+import { db } from './firebaseConfig';
+
+import { COLORS } from './src/constants/theme';
+
 
 import SignInScreen from './src/screens/SignInScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
@@ -25,6 +34,49 @@ import InventoryModal from './src/components/InventoryModal';
 import ProfileModal from './src/components/ProfileModal';
 
 export default function App() {
+
+  // =====================================================
+  // PRODUCTS
+  // =====================================================
+
+  const [products, setProducts] = useState([]);
+
+  const loadProducts = async () => {
+    console.log('🔥 loadProducts CALLED');
+  try {
+    const snapshot = await getDocs(
+      collection(db, 'products')
+    );
+                                                                       
+    const firebaseProducts = snapshot.docs.map((document) => ({
+      id: document.id,
+      ...document.data(),
+    }));
+
+    // Products
+    setProducts(firebaseProducts);
+
+    // Inventory comes from the same Firebase products
+    const firebaseInventory = firebaseProducts.map((product) => ({
+      id: product.id,
+      name: product.name,
+      stock: Number(product.stock) || 0,
+      minStock: Number(product.minStock) || 5,
+      price: Number(product.price) || 0,
+      costPrice: Number(product.costPrice) || 0,
+    }));
+
+    setInventoryItems(firebaseInventory);
+
+    console.log('Products loaded:', firebaseProducts);
+    console.log('Inventory loaded:', firebaseInventory);
+
+  } catch (error) {
+    console.log('Error loading products:', error);
+  }
+};
+
+  
   const [currentScreen, setCurrentScreen] = useState('SIGN_IN');
   const [activeTab, setActiveTab] = useState('DASHBOARD');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -34,6 +86,31 @@ export default function App() {
   // =====================================================
 
   const [salesTransactions, setSalesTransactions] = useState([]);
+  const loadSales = async () => {
+  try {
+    const snapshot = await getDocs(
+      collection(db, 'sales')
+    );
+
+    const firebaseSales = snapshot.docs.map((document) => ({
+      id: document.id,
+      ...document.data(),
+    }));
+
+    setSalesTransactions(firebaseSales);
+
+    console.log(
+      'Sales loaded from Firebase:',
+      firebaseSales
+    );
+
+  } catch (error) {
+    console.log(
+      'Error loading sales:',
+      error
+    );
+  }
+};
 
   const [stockTransactions, setStockTransactions] = useState([]);
 
@@ -53,13 +130,9 @@ export default function App() {
   // PRODUCTS + INVENTORY
   // =====================================================
 
-  const [products, setProducts] = useState(
-    INITIAL_PRODUCTS || []
-  );
+  
 
-  const [inventoryItems, setInventoryItems] = useState(
-    INITIAL_INVENTORY || []
-  );
+  const [inventoryItems, setInventoryItems] = useState([]);
 
   // =====================================================
   // MODALS
@@ -94,22 +167,26 @@ export default function App() {
   // SIGN IN
   // =====================================================
 
-  const handleSignIn = (credentials) => {
-    if (credentials?.email) {
-      const email = credentials.email;
+  const handleSignIn = async (credentials) => {
+  if (credentials?.email) {
+    const email = credentials.email;
 
-      const extractedName =
-        credentials.name ||
-        email.split('@')[0].toUpperCase();
+    const extractedName =
+      credentials.name ||
+      email.split('@')[0].toUpperCase();
 
-      setUser({
-        name: extractedName,
-        email,
-      });
-    }
+    setUser({
+      name: extractedName,
+      email,
+    });
+  }
 
-    setCurrentScreen('APP');
-  };
+  // Load Firebase data AFTER login
+  await loadProducts();
+  await loadSales();
+
+  setCurrentScreen('APP');
+};
 
   // =====================================================
   // PROFILE
@@ -124,9 +201,10 @@ export default function App() {
   // RECORD SALE
   // =====================================================
 
-  const handleRecordSale = (newTx) => {
-    if (!newTx) return;
+  const handleRecordSale = async (newTx) => {
+  if (!newTx) return;
 
+  try {
     const transaction = {
       ...newTx,
       id: newTx.id || String(Date.now()),
@@ -135,11 +213,40 @@ export default function App() {
         newTx.timestamp || new Date().toISOString(),
     };
 
+    // Save sale to Firebase
+    const docRef = await addDoc(
+      collection(db, 'sales'),
+      transaction
+    );
+
+    // Add Firebase ID to local state
+    const firebaseTransaction = {
+      ...transaction,
+      id: docRef.id,
+    };
+
     setSalesTransactions((prev) => [
-      transaction,
+      firebaseTransaction,
       ...prev,
     ]);
-  };
+
+    console.log(
+      'Sale saved to Firebase:',
+      firebaseTransaction
+    );
+
+  } catch (error) {
+    console.log(
+      'Firebase sale error:',
+      error
+    );
+
+    Alert.alert(
+      'Error',
+      'Unable to save sale.'
+    );
+  }
+};
 
   // =====================================================
   // UPDATE INVENTORY FROM POS
@@ -200,29 +307,23 @@ export default function App() {
   // QUICK INVENTORY STOCK UPDATE
   // =====================================================
 
-  const handleQuickStockUpdate = (item, newStock) => {
-    if (!item) return;
+  const handleQuickStockUpdate = async (item, newStock) => {
+  if (!item) return;
 
-    const oldStock = Number(item.stock) || 0;
-    const updatedStock = Number(newStock) || 0;
+  const updatedStock = Number(newStock) || 0;
 
-    if (updatedStock < 0) return;
+  if (updatedStock < 0) return;
 
-    const difference = updatedStock - oldStock;
-
-    // Update inventory
-    setInventoryItems((prev) =>
-      (prev || []).map((inventoryItem) =>
-        inventoryItem.id === item.id
-          ? {
-              ...inventoryItem,
-              stock: updatedStock,
-            }
-          : inventoryItem
-      )
+  try {
+    // Update Firebase
+    await updateDoc(
+      doc(db, 'products', item.id),
+      {
+        stock: updatedStock,
+      }
     );
 
-    // Keep Products synchronized
+    // Update Products state
     setProducts((prev) =>
       (prev || []).map((product) =>
         product.id === item.id
@@ -234,31 +335,36 @@ export default function App() {
       )
     );
 
-    // Record actual movement
-    if (difference > 0) {
-      recordStockMovement({
-        productId: item.id,
-        productName: item.name,
-        quantity: difference,
-        action: 'ADD',
-      });
-    }
+    // Update Inventory state
+    setInventoryItems((prev) =>
+      (prev || []).map((inventoryItem) =>
+        inventoryItem.id === item.id
+          ? {
+              ...inventoryItem,
+              stock: updatedStock,
+            }
+          : inventoryItem
+      )
+    );
 
-    if (difference < 0) {
-      recordStockMovement({
-        productId: item.id,
-        productName: item.name,
-        quantity: Math.abs(difference),
-        action: 'REMOVE',
-      });
-    }
-  };
+    console.log('Stock updated in Firebase');
+
+  } catch (error) {
+    console.log('Firebase stock update error:', error);
+
+    Alert.alert(
+      'Error',
+      'Unable to update stock.'
+    );
+  }
+};
 
   // =====================================================
   // SAVE PRODUCT
   // =====================================================
 
-  const handleSaveProduct = (formData) => {
+  const handleSaveProduct = async (formData) => {
+  try {
     const currentProducts = products || [];
     const currentInventory = inventoryItems || [];
 
@@ -279,27 +385,28 @@ export default function App() {
     // =====================================================
 
     if (editingProduct) {
-      const oldProduct = currentProducts.find(
-        (p) => p.id === editingProduct.id
+      const productRef = doc(
+        db,
+        'products',
+        editingProduct.id
       );
 
-      const oldStock = Number(oldProduct?.stock) || 0;
+      await updateDoc(productRef, formattedData);
 
-      const stockDifference = numStock - oldStock;
+      const updatedProduct = {
+        ...editingProduct,
+        ...formattedData,
+      };
 
-      // Update products
       setProducts(
         currentProducts.map((p) =>
           p.id === editingProduct.id
-            ? {
-                ...p,
-                ...formattedData,
-              }
+            ? updatedProduct
             : p
         )
       );
 
-      // Update inventory
+      // Update inventory locally
       setInventoryItems(
         currentInventory.map((item) =>
           item.id === editingProduct.id
@@ -314,25 +421,10 @@ export default function App() {
         )
       );
 
-      // Only increase is IN
-      if (stockDifference > 0) {
-        recordStockMovement({
-          productId: editingProduct.id,
-          productName: formData.name,
-          quantity: stockDifference,
-          action: 'ADD',
-        });
-      }
-
-      // Decrease is REMOVE
-      if (stockDifference < 0) {
-        recordStockMovement({
-          productId: editingProduct.id,
-          productName: formData.name,
-          quantity: Math.abs(stockDifference),
-          action: 'REMOVE',
-        });
-      }
+      Alert.alert(
+        'Success',
+        'Product updated successfully.'
+      );
     }
 
     // =====================================================
@@ -340,22 +432,27 @@ export default function App() {
     // =====================================================
 
     else {
-      const newId = String(Date.now());
+      const docRef = await addDoc(
+        collection(db, 'products'),
+        formattedData
+      );
 
-      // Add product
-      setProducts([
-        ...currentProducts,
-        {
-          id: newId,
-          ...formattedData,
-        },
+      const newProduct = {
+        id: docRef.id,
+        ...formattedData,
+      };
+
+      // Add to React state
+      setProducts((prev) => [
+        ...prev,
+        newProduct,
       ]);
 
-      // Add inventory
-      setInventoryItems([
-        ...currentInventory,
+      // Add inventory locally
+      setInventoryItems((prev) => [
+        ...prev,
         {
-          id: newId,
+          id: docRef.id,
           name: formData.name,
           stock: numStock,
           minStock: 5,
@@ -364,49 +461,87 @@ export default function App() {
         },
       ]);
 
-      // IMPORTANT:
-      // Initial product stock = STOCK IN
       if (numStock > 0) {
         recordStockMovement({
-          productId: newId,
+          productId: docRef.id,
           productName: formData.name,
           quantity: numStock,
           action: 'ADD',
         });
       }
+
+      Alert.alert(
+        'Success',
+        'Product added successfully.'
+      );
     }
 
     setProductModalVisible(false);
     setEditingProduct(null);
-  };
+
+  } catch (error) {
+    console.log(
+      'Firebase product save error:',
+      error
+    );
+
+    Alert.alert(
+      'Error',
+      'Unable to save product. Please try again.'
+    );
+  }
+};
+
+  
 
   // =====================================================
   // DELETE PRODUCT
   // =====================================================
 
-  const handleDeleteProduct = (id) => {
-    setProducts(
-      (products || []).filter(
+ const handleDeleteProduct = async (id) => {
+  try {
+    await deleteDoc(
+      doc(db, 'products', id)
+    );
+
+    setProducts((prev) =>
+      (prev || []).filter(
         (product) => product.id !== id
       )
     );
 
-    setInventoryItems(
-      (inventoryItems || []).filter(
+    setInventoryItems((prev) =>
+      (prev || []).filter(
         (item) => item.id !== id
       )
     );
-  };
 
+    Alert.alert(
+      'Success',
+      'Product deleted successfully.'
+    );
+
+  } catch (error) {
+    console.log(
+      'Firebase product delete error:',
+      error
+    );
+
+    Alert.alert(
+      'Error',
+      'Unable to delete product.'
+    );
+  }
+};
   // =====================================================
   // SAVE INVENTORY
   // =====================================================
 
-  const handleSaveInventory = (formData) => {
-    const currentInventory = inventoryItems || [];
+  const handleSaveInventory = async (formData) => {
+  const currentInventory = inventoryItems || [];
+  const numStock = Number(formData.stock) || 0;
 
-    const numStock = Number(formData.stock) || 0;
-
+  try {
     // =====================================================
     // EDIT INVENTORY
     // =====================================================
@@ -417,10 +552,18 @@ export default function App() {
       );
 
       const oldStock = Number(oldItem?.stock) || 0;
-
       const stockDifference = numStock - oldStock;
 
-      // Update inventory
+      // Update Firebase
+      await updateDoc(
+        doc(db, 'products', editingInventory.id),
+        {
+          ...formData,
+          stock: numStock,
+        }
+      );
+
+      // Update Inventory state
       setInventoryItems(
         currentInventory.map((i) =>
           i.id === editingInventory.id
@@ -433,12 +576,13 @@ export default function App() {
         )
       );
 
-      // Synchronize product
-      setProducts(
-        (products || []).map((p) =>
+      // Update Products state
+      setProducts((prev) =>
+        (prev || []).map((p) =>
           p.id === editingInventory.id
             ? {
                 ...p,
+                ...formData,
                 stock: numStock,
               }
             : p
@@ -466,6 +610,11 @@ export default function App() {
           action: 'REMOVE',
         });
       }
+
+      Alert.alert(
+        'Success',
+        'Inventory updated successfully.'
+      );
     }
 
     // =====================================================
@@ -473,33 +622,33 @@ export default function App() {
     // =====================================================
 
     else {
-      const newId = String(Date.now());
+      // IMPORTANT:
+      // Inventory should normally belong to a product.
+      // So for now, do NOT create a separate Firebase
+      // inventory document here.
+      Alert.alert(
+        'Info',
+        'Add a new product from the Products screen. Its inventory will be created automatically.'
+      );
 
-      const newItem = {
-        id: newId,
-        stock: numStock,
-        ...formData,
-      };
-
-      setInventoryItems([
-        ...currentInventory,
-        newItem,
-      ]);
-
-      // Initial stock = IN
-      if (numStock > 0) {
-        recordStockMovement({
-          productId: newId,
-          productName: formData.name,
-          quantity: numStock,
-          action: 'ADD',
-        });
-      }
+      return;
     }
 
     setInventoryModalVisible(false);
     setEditingInventory(null);
-  };
+
+  } catch (error) {
+    console.log(
+      'Firebase inventory save error:',
+      error
+    );
+
+    Alert.alert(
+      'Error',
+      'Unable to save inventory. Please try again.'
+    );
+  }
+};
 
   // =====================================================
   // DELETE INVENTORY

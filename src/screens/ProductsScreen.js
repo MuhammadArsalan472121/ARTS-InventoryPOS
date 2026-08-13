@@ -23,7 +23,17 @@ export default function ProductsScreen({
   };
 
   const safeProducts = products || [];
-
+  // Get unique categories from products dynamically
+const categories = [
+  'All',
+  ...Array.from(
+    new Set(
+      safeProducts
+        .map((p) => p?.category)
+        .filter((category) => category && category.trim() !== '')
+    )
+  ),
+];
   const filteredProducts = safeProducts.filter((p) => {
     const query = search.toLowerCase();
     const matchesSearch = p?.name?.toLowerCase().includes(query) || 
@@ -63,20 +73,42 @@ export default function ProductsScreen({
         />
 
         {/* Category Horizontal Filter Chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-          {['All', 'Electronics', 'Furniture', 'Accessories'].map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              style={[styles.filterChip, categoryFilter === cat && styles.filterChipActive]}
-              onPress={() => setCategoryFilter(cat)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.filterChipText, categoryFilter === cat && styles.filterChipTextActive]}>
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <ScrollView
+  horizontal
+  showsHorizontalScrollIndicator={false}
+  style={styles.filterRow}
+  contentContainerStyle={{ paddingRight: 10 }}
+>
+  {[
+  'All',
+  'Electronics',
+  'Furniture',
+  'Food & Beverages',
+  'Clothing',
+  'Pharmacy',
+  'Accessories',
+  'Other'
+].map((cat) => (
+    <TouchableOpacity
+      key={cat}
+      style={[
+        styles.filterChip,
+        categoryFilter === cat && styles.filterChipActive,
+      ]}
+      onPress={() => setCategoryFilter(cat)}
+      activeOpacity={0.7}
+    >
+      <Text
+        style={[
+          styles.filterChipText,
+          categoryFilter === cat && styles.filterChipTextActive,
+        ]}
+      >
+        {cat}
+      </Text>
+    </TouchableOpacity>
+  ))}
+</ScrollView>
 
         {/* Product Cards */}
         {filteredProducts.map((item) => {
