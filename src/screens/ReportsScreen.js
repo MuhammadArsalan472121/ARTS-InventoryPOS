@@ -374,6 +374,12 @@ export default function ReportsScreen({
 
     const yesterday =
       getYesterdayStr();
+    
+      console.log('📊 Reports Debug');
+  console.log('Today:', today);
+  console.log('Yesterday:', yesterday);
+  console.log('Sales:', salesTransactions);
+  console.log('Daily Data:', dailyDataList);  
 
     // =================================================
     // QUICK FILTERS

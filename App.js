@@ -112,6 +112,32 @@ export default function App() {
   }
 };
 
+const loadStockMovements = async () => {
+  try {
+    const snapshot = await getDocs(
+      collection(db, 'stockMovements')
+    );
+
+    const firebaseMovements = snapshot.docs.map((document) => ({
+      id: document.id,
+      ...document.data(),
+    }));
+
+    setStockTransactions(firebaseMovements);
+
+    console.log(
+      'Stock movements loaded from Firebase:',
+      firebaseMovements
+    );
+
+  } catch (error) {
+    console.log(
+      'Error loading stock movements:',
+      error
+    );
+  }
+};
+
   const [stockTransactions, setStockTransactions] = useState([]);
 
   // =====================================================
@@ -181,11 +207,19 @@ export default function App() {
     });
   }
 
-  // Load Firebase data AFTER login
-  await loadProducts();
-  await loadSales();
-
+  
   setCurrentScreen('APP');
+
+  // Load Firebase data in parallel
+  try {
+  await Promise.all([
+    loadProducts(),
+    loadSales(),
+    loadStockMovements(),
+  ]);
+} catch (error) {
+  console.log('Error loading app data:', error);
+}
 };
 
   // =====================================================

@@ -18,7 +18,7 @@ export default function ProductsScreen({
   const getStockStatus = (stock) => {
     const numStock = Number(stock) || 0;
     if (numStock === 0) return { label: 'Out of Stock', color: COLORS.dangerRed || '#EF4444', bg: '#FEE2E2' };
-    if (numStock <= 10) return { label: 'Low Stock', color: COLORS.warningYellow || '#D97706', bg: '#FEF3C7' };
+    if (numStock <= 5) return { label: 'Low Stock', color: COLORS.warningYellow || '#D97706', bg: '#FEF3C7' };
     return { label: 'In Stock', color: COLORS.successGreen || '#10B981', bg: '#D1FAE5' };
   };
 
