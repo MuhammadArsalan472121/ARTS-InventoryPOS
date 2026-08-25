@@ -309,33 +309,57 @@ const loadStockMovements = async () => {
   // RECORD STOCK MOVEMENT
   // =====================================================
 
-  const recordStockMovement = ({
+  const recordStockMovement = async ({
+  productId,
+  productName,
+  quantity,
+  action,
+}) => {
+  const qty = Number(quantity) || 0;
+
+  if (!qty || qty <= 0) {
+    return;
+  }
+
+  const movement = {
     productId,
     productName,
-    quantity,
+    quantity: qty,
     action,
-  }) => {
-    const qty = Number(quantity) || 0;
+    date: getLocalDateString(),
+    timestamp: new Date().toISOString(),
+  };
 
-    if (!qty || qty <= 0) {
-      return;
-    }
+  try {
+    // Save permanently in Firebase
+    const docRef = await addDoc(
+      collection(db, 'stockMovements'),
+      movement
+    );
 
-    const movement = {
-      id: `${Date.now()}-${Math.random()}`,
-      productId,
-      productName,
-      quantity: qty,
-      action,
-      date: getLocalDateString(),
-      timestamp: new Date().toISOString(),
+    const firebaseMovement = {
+      id: docRef.id,
+      ...movement,
     };
 
+    // Keep local state updated immediately
     setStockTransactions((prev) => [
-      movement,
+      firebaseMovement,
       ...prev,
     ]);
-  };
+
+    console.log(
+      'Stock movement saved:',
+      firebaseMovement
+    );
+
+  } catch (error) {
+    console.log(
+      'Firebase stock movement error:',
+      error
+    );
+  }
+};
 
   // =====================================================
   // QUICK INVENTORY STOCK UPDATE

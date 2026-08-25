@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Modal,
@@ -8,6 +9,13 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+
+import {
+  getAuth,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
+} from 'firebase/auth';
 import { COLORS } from '../constants/theme';
 
 export default function ProfileModal({
@@ -60,45 +68,134 @@ export default function ProfileModal({
   };
 
   // Frontend-only password handler
-  const handleChangePassword = () => {
-    if (!currentPassword.trim()) {
-      Alert.alert(
-        'Current Password Required',
-        'Please enter your current password.'
-      );
-      return;
-    }
-
-    if (!newPassword.trim()) {
-      Alert.alert(
-        'New Password Required',
-        'Please enter a new password.'
-      );
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      Alert.alert(
-        'Invalid Password',
-        'Password should contain at least 6 characters.'
-      );
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      Alert.alert(
-        'Passwords Do Not Match',
-        'New password and confirm password must match.'
-      );
-      return;
-    }
-
-    // Firebase Authentication will be connected here later.
+  const handleChangePassword = async () => {
+  if (!currentPassword.trim()) {
     Alert.alert(
-      'Not Connected Yet',
-      'Password change will be available after Firebase Authentication is connected.'
+      'Current Password Required',
+      'Please enter your current password.'
     );
-  };
+    return;
+  }
+
+  if (!newPassword.trim()) {
+    Alert.alert(
+      'New Password Required',
+      'Please enter a new password.'
+    );
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    Alert.alert(
+      'Invalid Password',
+      'Password should contain at least 6 characters.'
+    );
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    Alert.alert(
+      'Passwords Do Not Match',
+      'New password and confirm password must match.'
+    );
+    return;
+  }
+
+  if (!email) {
+    Alert.alert(
+      'Error',
+      'No account email is available.'
+    );
+    return;
+  }
+
+  try {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      Alert.alert(
+        'Not Logged In',
+        'Please log in again before changing your password.'
+      );
+      return;
+    }
+
+    // Verify current password
+    const credential =
+      EmailAuthProvider.credential(
+        email,
+        currentPassword
+      );
+
+    await reauthenticateWithCredential(
+      currentUser,
+      credential
+    );
+
+    // Current password is correct → update password
+    await updatePassword(
+      currentUser,
+      newPassword
+    );
+
+    Alert.alert(
+      'Password Changed',
+      'Your password has been changed successfully.'
+    );
+
+    // Clear password fields
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowPasswordSection(false);
+
+  } catch (error) {
+    console.log(
+      'Password change error:',
+      error
+    );
+
+    if (
+      error.code ===
+      'auth/invalid-credential'
+    ) {
+      Alert.alert(
+        'Incorrect Password',
+        'The current password you entered is incorrect.'
+      );
+    } else if (
+      error.code ===
+      'auth/wrong-password'
+    ) {
+      Alert.alert(
+        'Incorrect Password',
+        'The current password you entered is incorrect.'
+      );
+    } else if (
+      error.code ===
+      'auth/weak-password'
+    ) {
+      Alert.alert(
+        'Weak Password',
+        'Please choose a stronger password.'
+      );
+    } else if (
+      error.code ===
+      'auth/requires-recent-login'
+    ) {
+      Alert.alert(
+        'Login Required',
+        'Please log out and log in again, then change your password.'
+      );
+    } else {
+      Alert.alert(
+        'Error',
+        'Unable to change password. Please try again.'
+      );
+    }
+  }
+};
 
   const getInitial = () => {
     return name
