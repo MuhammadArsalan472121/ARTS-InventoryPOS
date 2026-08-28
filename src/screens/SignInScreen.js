@@ -107,6 +107,7 @@ export default function SignInScreen({ onSignIn, onNavigateSignUp, onNavigateRec
         <TextInput
           style={styles.textInput}
           placeholder="admin@artech.ph"
+          placeholderTextColor={COLORS.textLight}
           value={email}
           onChangeText={(val) => { setEmail(val); setErrorMessage(''); }}
           autoCapitalize="none"
@@ -118,6 +119,7 @@ export default function SignInScreen({ onSignIn, onNavigateSignUp, onNavigateRec
   <TextInput
     style={styles.passwordInput}
     placeholder="Password"
+    placeholderTextColor={COLORS.textLight}
     secureTextEntry={!showPassword}
     value={password}
     onChangeText={(val) => {

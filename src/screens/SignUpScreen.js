@@ -3,7 +3,12 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView, StyleSheet, Alert } from 'react-native';
 import { COLORS } from '../constants/theme';
 
-import { createUserWithEmailAndPassword, getAuth } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  sendEmailVerification,
+} from 'firebase/auth';
+
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 import app, { db } from '../../firebaseConfig';
@@ -64,6 +69,10 @@ export default function SignUpScreen({ onSignUpSuccess, onNavigateSignIn }) {
 const user = userCredential.user;
 
 console.log('Firebase user created:', user.uid);
+// Send email verification
+await sendEmailVerification(user);
+
+console.log('Verification email sent:', user.email);
 
 // Save additional user information in Firestore
 await setDoc(doc(db, 'users', user.uid), {
@@ -77,8 +86,8 @@ await setDoc(doc(db, 'users', user.uid), {
 console.log('User profile saved to Firestore');
 
 Alert.alert(
-  'Success',
-  'Account created successfully.'
+  'Verify Your Email',
+  'Your account has been created successfully. A verification link has been sent to your email. Please check your inbox or spam folder and verify your email before signing in.'
 );
 
 onSignUpSuccess();
@@ -123,6 +132,7 @@ onSignUpSuccess();
           <TextInput
             style={styles.textInput}
             placeholder="e.g. Maria Santos"
+            placeholderTextColor={COLORS.textLight}
             value={name}
             onChangeText={(val) => { setName(val); setErrorMessage(''); }}
           />
@@ -131,6 +141,7 @@ onSignUpSuccess();
           <TextInput
             style={styles.textInput}
             placeholder="your@email.com"
+            placeholderTextColor={COLORS.textLight}
             value={email}
             onChangeText={(val) => { setEmail(val); setErrorMessage(''); }}
             autoCapitalize="none"
@@ -141,6 +152,7 @@ onSignUpSuccess();
           <TextInput
             style={styles.textInput}
             placeholder="+63 917 000 0000"
+            placeholderTextColor={COLORS.textLight}
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
@@ -150,6 +162,7 @@ onSignUpSuccess();
           <TextInput
             style={styles.textInput}
             placeholder="Min 8 chars with 1 special character (@,#,$)"
+            placeholderTextColor={COLORS.textLight}
             secureTextEntry
             value={password}
             onChangeText={(val) => { setPassword(val); setErrorMessage(''); }}
@@ -159,6 +172,7 @@ onSignUpSuccess();
           <TextInput
             style={styles.textInput}
             placeholder="Repeat your password"
+            placeholderTextColor={COLORS.textLight}
             secureTextEntry
             value={confirmPassword}
             onChangeText={(val) => { setConfirmPassword(val); setErrorMessage(''); }}

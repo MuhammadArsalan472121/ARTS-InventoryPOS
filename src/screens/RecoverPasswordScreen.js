@@ -59,7 +59,7 @@ export default function RecoverPasswordScreen({ onSendReset, onNavigateSignIn })
         <Text style={styles.authSubtitle}>Enter the email linked to your account. We'll send a password reset link.</Text>
 
         <Text style={styles.inputLabel}>LINKED EMAIL ADDRESS</Text>
-        <TextInput style={styles.textInput} placeholder="your@email.com" value={email} onChangeText={setEmail} autoCapitalize="none" />
+        <TextInput style={styles.textInput} placeholder="your@email.com" placeholderTextColor={COLORS.textLight} value={email} onChangeText={setEmail} autoCapitalize="none" />
 
         <TouchableOpacity style={styles.primaryButton} onPress={handleSend}>
           <Text style={styles.primaryButtonText}>Send Password Reset</Text>

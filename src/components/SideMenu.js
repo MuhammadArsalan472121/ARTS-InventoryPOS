@@ -1,8 +1,23 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, SafeAreaView } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  SafeAreaView,
+  Platform,
+} from 'react-native';
 import { COLORS } from '../constants/theme';
 
-export default function SideMenu({ visible, activeTab, setActiveTab, onClose, onSignOut, user }) {
+export default function SideMenu({
+  visible,
+  activeTab,
+  setActiveTab,
+  onClose,
+  onSignOut,
+  user,
+}) {
   if (!visible) return null;
 
   const menuItems = [
@@ -13,44 +28,76 @@ export default function SideMenu({ visible, activeTab, setActiveTab, onClose, on
   ];
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View style={styles.overlay}>
-        {/* Backdrop overlay touch to close */}
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+
+        {/* Backdrop */}
+        <TouchableOpacity
+          style={styles.backdrop}
+          activeOpacity={1}
+          onPress={onClose}
+        />
 
         <SafeAreaView style={styles.menuContainer}>
           <View style={styles.innerContent}>
+
             {/* Header / App Info */}
             <View style={styles.headerSection}>
               <View style={styles.logoBadge}>
                 <Text style={styles.logoBadgeText}>AR</Text>
               </View>
+
               <View style={styles.headerTextContainer}>
-                <Text style={styles.brandTitle}>ARTechSolutions</Text>
-                <Text style={styles.brandSubtitle}>Inventory & POS v1.0</Text>
+                <Text style={styles.brandTitle}>
+                  ARTechSolutions
+                </Text>
+
+                <Text style={styles.brandSubtitle}>
+                  Inventory & POS v1.0
+                </Text>
               </View>
             </View>
 
             {/* User Profile Card */}
             <View style={styles.userCard}>
-              <Text style={styles.userName}>{user?.name || 'Admin User'}</Text>
-              <Text style={styles.userEmail}>{user?.email || 'admin@artech.ph'}</Text>
+              <Text style={styles.userName}>
+                {user?.name || 'Admin User'}
+              </Text>
+
+              <Text style={styles.userEmail}>
+                {user?.email || 'admin@artech.ph'}
+              </Text>
             </View>
 
-            {/* Navigation Links */}
+            {/* Navigation */}
             <View style={styles.navigationSection}>
               {menuItems.map((item) => {
                 const isActive = activeTab === item.id;
+
                 return (
                   <TouchableOpacity
                     key={item.id}
-                    style={[styles.navItem, isActive && styles.navItemActive]}
+                    style={[
+                      styles.navItem,
+                      isActive && styles.navItemActive,
+                    ]}
+                    activeOpacity={0.7}
                     onPress={() => {
                       setActiveTab(item.id);
                       onClose();
                     }}
                   >
-                    <Text style={[styles.navItemText, isActive && styles.navItemTextActive]}>
+                    <Text
+                      style={[
+                        styles.navItemText,
+                        isActive && styles.navItemTextActive,
+                      ]}
+                    >
                       {item.label}
                     </Text>
                   </TouchableOpacity>
@@ -60,14 +107,29 @@ export default function SideMenu({ visible, activeTab, setActiveTab, onClose, on
 
             {/* Bottom Actions */}
             <View style={styles.footerSection}>
-              <TouchableOpacity style={styles.signOutButton} onPress={onSignOut}>
-                <Text style={styles.signOutText}>Sign Out</Text>
+
+              <TouchableOpacity
+                style={styles.signOutButton}
+                activeOpacity={0.7}
+                onPress={onSignOut}
+              >
+                <Text style={styles.signOutText}>
+                  Sign Out
+                </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <Text style={styles.closeButtonText}>Close Menu</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                activeOpacity={0.7}
+                onPress={onClose}
+              >
+                <Text style={styles.closeButtonText}>
+                  Close Menu
+                </Text>
               </TouchableOpacity>
+
             </View>
+
           </View>
         </SafeAreaView>
       </View>
@@ -78,9 +140,10 @@ export default function SideMenu({ visible, activeTab, setActiveTab, onClose, on
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
+
   backdrop: {
     position: 'absolute',
     top: 0,
@@ -88,22 +151,32 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
+
   menuContainer: {
     width: '78%',
-    height: '100%',
+    flex: 1,
     backgroundColor: COLORS.white,
   },
+
   innerContent: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+
+    // Important for Android bottom navigation area
+    paddingBottom: Platform.OS === 'android' ? 18 : 8,
+
     justifyContent: 'space-between',
   },
+
+  /* ---------- HEADER ---------- */
+
   headerSection: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    marginTop: 8,
   },
+
   logoBadge: {
     width: 44,
     height: 44,
@@ -113,80 +186,112 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 10,
   },
+
   logoBadgeText: {
     fontWeight: 'bold',
     fontSize: 18,
     color: COLORS.darkBlue,
   },
+
   headerTextContainer: {
     flex: 1,
   },
+
   brandTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.textDark,
   },
+
   brandSubtitle: {
     fontSize: 11,
     color: COLORS.textLight,
+    marginTop: 2,
   },
+
+  /* ---------- USER ---------- */
+
   userCard: {
     backgroundColor: '#F8FAFC',
     padding: 12,
     borderRadius: 10,
-    marginBottom: 20,
+    marginBottom: 18,
     borderWidth: 1,
     borderColor: COLORS.borderGray,
   },
+
   userName: {
     fontSize: 14,
     fontWeight: 'bold',
     color: COLORS.textDark,
   },
+
   userEmail: {
     fontSize: 12,
     color: COLORS.textLight,
+    marginTop: 3,
   },
+
+  /* ---------- NAVIGATION ---------- */
+
   navigationSection: {
     flex: 1,
   },
+
   navItem: {
-    paddingVertical: 12,
+    minHeight: 52,
     paddingHorizontal: 16,
+    justifyContent: 'center',
     borderRadius: 8,
-    marginBottom: 6,
+    marginBottom: 4,
   },
+
   navItemActive: {
     backgroundColor: '#EFF6FF',
   },
+
   navItemText: {
     fontSize: 15,
     fontWeight: '600',
     color: COLORS.textDark,
   },
+
   navItemTextActive: {
     color: COLORS.primaryBlue,
     fontWeight: 'bold',
   },
+
+  /* ---------- FOOTER ---------- */
+
   footerSection: {
-    gap: 10,
-    paddingBottom: 8,
+    paddingTop: 12,
+
+    // Extra space above Android navigation buttons
+    paddingBottom: Platform.OS === 'android' ? 10 : 4,
   },
+
   signOutButton: {
+    minHeight: 52,
     backgroundColor: '#FEE2E2',
-    paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
+
   signOutText: {
     color: COLORS.dangerRed,
     fontWeight: 'bold',
     fontSize: 14,
   },
+
   closeButton: {
-    paddingVertical: 8,
+    minHeight: 44,
+    borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
+
   closeButtonText: {
     color: COLORS.textLight,
     fontSize: 13,
