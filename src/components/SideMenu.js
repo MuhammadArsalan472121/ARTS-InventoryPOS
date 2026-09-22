@@ -5,9 +5,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
-  SafeAreaView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/theme';
 
 export default function SideMenu({
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
 
   menuContainer: {
     width: '78%',
-    flex: 1,
+
     backgroundColor: COLORS.white,
   },
 

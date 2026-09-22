@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  Platform,
 } from 'react-native';
 import { COLORS } from '../constants/theme';
 

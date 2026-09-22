@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
-  SafeAreaView,
+  View,
   StatusBar,
   StyleSheet,
   Alert,
 } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
   collection,
@@ -769,8 +770,9 @@ const loadStockMovements = async () => {
   // =====================================================
 
   return (
-    <SafeAreaView style={styles.mainContainer}>
-      <StatusBar
+<SafeAreaProvider>
+    <View style={styles.mainContainer}>      
+    <StatusBar
         barStyle="light-content"
         backgroundColor={COLORS.darkBlue}
       />
@@ -908,7 +910,8 @@ const loadStockMovements = async () => {
         }}
         onSave={handleSaveInventory}
       />
-    </SafeAreaView>
+    </View>
+  </SafeAreaProvider>
   );
 }
 
