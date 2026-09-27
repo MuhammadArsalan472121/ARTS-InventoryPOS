@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 
 import Header from '../components/Header';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { COLORS } from '../constants/theme';
 
 export default function ReportsScreen({
@@ -86,7 +88,7 @@ export default function ReportsScreen({
       return '';
     }
 
-    // Already YYYY-MM-DD
+   
     if (
       typeof value === 'string' &&
       /^\d{4}-\d{2}-\d{2}$/.test(value)
@@ -117,10 +119,6 @@ export default function ReportsScreen({
     return '';
   };
 
-  // =====================================================
-  // SALES
-  // =====================================================
-
   const getItemsSold = (tx) => {
     if (!Array.isArray(tx?.items)) {
       return 0;
@@ -133,10 +131,7 @@ export default function ReportsScreen({
     );
   };
 
-  // =====================================================
-  // DAILY DATA
-  // =====================================================
-
+ 
   const getAggregatedDailyData = () => {
     const dailyMap = {};
 
@@ -160,10 +155,7 @@ export default function ReportsScreen({
       }
     };
 
-    // =================================================
-    // STOCK MOVEMENTS
-    // =================================================
-
+    
     (stockTransactions || []).forEach(
       (transaction) => {
         const dateKey = normalizeDate(
@@ -178,10 +170,7 @@ export default function ReportsScreen({
         const quantity =
           Number(transaction.quantity) || 0;
 
-        /*
-          ADD = STOCK IN
-          REMOVE = MANUAL STOCK OUT
-        */
+        
 
         if (
           transaction.action === 'ADD' ||
@@ -198,10 +187,7 @@ export default function ReportsScreen({
       }
     );
 
-    // =================================================
-    // SALES = OUT
-    // =================================================
-
+    
     (salesTransactions || []).forEach(
       (tx) => {
         const dateKey = normalizeDate(
@@ -229,9 +215,7 @@ export default function ReportsScreen({
     );
   };
 
-  // =====================================================
-  // MONTHLY DATA
-  // =====================================================
+  
 
   const getAggregatedMonthlyData = () => {
     const monthlyMap = {};
@@ -253,10 +237,7 @@ export default function ReportsScreen({
       }
     };
 
-    // =================================================
-    // STOCK MOVEMENTS
-    // =================================================
-
+    
     (stockTransactions || []).forEach(
       (transaction) => {
         const dateKey = normalizeDate(
@@ -291,10 +272,7 @@ export default function ReportsScreen({
       }
     );
 
-    // =================================================
-    // SALES
-    // =================================================
-
+   
     (salesTransactions || []).forEach(
       (tx) => {
         const dateKey = normalizeDate(
@@ -331,9 +309,7 @@ export default function ReportsScreen({
   const monthlyDataList =
     getAggregatedMonthlyData();
 
-  // =====================================================
-  // FILTERS
-  // =====================================================
+  
 
   const handleSelectQuickFilter = (
     option
@@ -380,10 +356,6 @@ export default function ReportsScreen({
   console.log('Yesterday:', yesterday);
   console.log('Sales:', salesTransactions);
   console.log('Daily Data:', dailyDataList);  
-
-    // =================================================
-    // QUICK FILTERS
-    // =================================================
 
     if (activeMode === 'QUICK') {
 
@@ -447,10 +419,7 @@ export default function ReportsScreen({
       }
     }
 
-    // =================================================
-    // CUSTOM DAILY
-    // =================================================
-
+    
     if (rangeType === 'DAILY') {
       return dailyDataList.filter(
         (item) =>
@@ -460,10 +429,6 @@ export default function ReportsScreen({
             item.date <= toDate)
       );
     }
-
-    // =================================================
-    // CUSTOM MONTHLY
-    // =================================================
 
     return monthlyDataList.filter(
       (item) =>
@@ -477,10 +442,6 @@ export default function ReportsScreen({
   const currentReportData =
     getFilteredData();
 
-  // =====================================================
-  // DISPLAY LABEL
-  // =====================================================
-
   const getActiveDisplayLabel = () => {
     if (activeMode === 'QUICK') {
       return `Quick View: ${quickFilter}`;
@@ -491,9 +452,7 @@ export default function ReportsScreen({
     } to ${toDate || 'End'}`;
   };
 
-  // =====================================================
-  // PRINT
-  // =====================================================
+  
 
   const handlePrint = () => {
     if (!currentReportData.length) {
@@ -511,9 +470,7 @@ export default function ReportsScreen({
     );
   };
 
-  // =====================================================
-  // DOWNLOAD
-  // =====================================================
+  
 
   const handleDownload = () => {
     if (!currentReportData.length) {
@@ -531,11 +488,10 @@ export default function ReportsScreen({
     );
   };
 
-  // =====================================================
-  // UI
-  // =====================================================
+  
 
   return (
+     <SafeAreaView style={styles.safeArea}>
     <ScrollView
       style={styles.tabContainer}
       showsVerticalScrollIndicator={false}
@@ -1023,10 +979,15 @@ export default function ReportsScreen({
 
       </View>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+  },
   tabContainer: {
     flex: 1,
     backgroundColor:

@@ -8,6 +8,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from 'react-native';
 
 import {
@@ -27,7 +30,7 @@ export default function ProfileModal({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
 
-  // Password fields - frontend only for now
+
   const [showPasswordSection, setShowPasswordSection] =
     useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -41,7 +44,7 @@ export default function ProfileModal({
       setEmail(user.email || '');
     }
 
-    // Reset password fields whenever modal opens
+  
     if (visible) {
       setShowPasswordSection(false);
       setCurrentPassword('');
@@ -57,8 +60,7 @@ export default function ProfileModal({
       return;
     }
 
-    // Only name is being changed.
-    // Email remains controlled by the account authentication.
+
     if (onSave) {
       onSave({
         name: name.trim(),
@@ -67,7 +69,7 @@ export default function ProfileModal({
     }
   };
 
-  // Frontend-only password handler
+
   const handleChangePassword = async () => {
   if (!currentPassword.trim()) {
     Alert.alert(
@@ -210,8 +212,19 @@ export default function ProfileModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.modalCard}>
+      <KeyboardAvoidingView
+  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  style={styles.keyboardContainer}
+>
+  <View style={styles.overlay}>
+    <View style={styles.modalCard}>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
 
           {/* TITLE */}
           <Text style={styles.title}>
@@ -262,7 +275,7 @@ export default function ProfileModal({
             </Text>
           </View>
 
-          {/* PASSWORD SECTION HEADER */}
+          
           <TouchableOpacity
             style={styles.passwordHeader}
             onPress={() =>
@@ -280,7 +293,7 @@ export default function ProfileModal({
             </Text>
           </TouchableOpacity>
 
-          {/* PASSWORD SECTION */}
+          
           {showPasswordSection && (
             <View style={styles.passwordSection}>
 
@@ -373,13 +386,18 @@ export default function ProfileModal({
             </TouchableOpacity>
 
           </View>
-        </View>
-      </View>
-    </Modal>
+        </ScrollView>
+    </View>
+  </View>
+</KeyboardAvoidingView>
+      </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardContainer: {
+  flex: 1,
+},
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -391,10 +409,16 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 16,
     padding: 20,
-    alignItems: 'center',
     maxHeight: '90%',
   },
+   scrollView: {
+  width: '100%',
+},
 
+scrollContent: {
+  alignItems: 'center',
+  paddingBottom: 10,
+},
   title: {
     fontSize: 18,
     fontWeight: 'bold',

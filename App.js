@@ -722,11 +722,15 @@ const loadStockMovements = async () => {
   };
 
   // =====================================================
-  // AUTH SCREENS
+  // SCREEN CONTENT
+  // (SafeAreaProvider now wraps ALL of these, auth screens
+  // included, instead of only wrapping the main app below.)
   // =====================================================
 
+  let screenContent = null;
+
   if (currentScreen === 'SIGN_IN') {
-    return (
+    screenContent = (
       <SignInScreen
         onSignIn={handleSignIn}
         onNavigateSignUp={() =>
@@ -737,10 +741,8 @@ const loadStockMovements = async () => {
         }
       />
     );
-  }
-
-  if (currentScreen === 'SIGN_UP') {
-    return (
+  } else if (currentScreen === 'SIGN_UP') {
+    screenContent = (
       <SignUpScreen
         onSignUpSuccess={() =>
           setCurrentScreen('SIGN_IN')
@@ -750,10 +752,8 @@ const loadStockMovements = async () => {
         }
       />
     );
-  }
-
-  if (currentScreen === 'RECOVER_PASSWORD') {
-    return (
+  } else if (currentScreen === 'RECOVER_PASSWORD') {
+    screenContent = (
       <RecoverPasswordScreen
         onSendReset={() =>
           setCurrentScreen('SIGN_IN')
@@ -763,155 +763,164 @@ const loadStockMovements = async () => {
         }
       />
     );
+  } else {
+    // =====================================================
+    // MAIN APP
+    // =====================================================
+
+    screenContent = (
+      <View style={styles.mainContainer}>
+
+        {/* SIDE MENU */}
+
+        <SideMenu
+          visible={isMenuOpen}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          user={user}
+          onClose={() => setIsMenuOpen(false)}
+          onSignOut={() => {
+            setIsMenuOpen(false);
+            setCurrentScreen('SIGN_IN');
+          }}
+        />
+
+        {/* DASHBOARD */}
+
+        {activeTab === 'DASHBOARD' && (
+          <DashboardScreen
+            onOpenMenu={() =>
+              setIsMenuOpen(true)
+            }
+            onOpenProfile={() =>
+              setProfileModalVisible(true)
+            }
+            user={user}
+            products={products || []}
+            productsCount={products?.length || 0}
+            inventoryItems={inventoryItems || []}
+            onUpdateInventory={handleUpdateInventory}
+            onRecordSale={handleRecordSale}
+          />
+        )}
+
+        {/* PRODUCTS */}
+
+        {activeTab === 'PRODUCTS' && (
+          <ProductsScreen
+            onOpenMenu={() =>
+              setIsMenuOpen(true)
+            }
+            onOpenProfile={() =>
+              setProfileModalVisible(true)
+            }
+            user={user}
+            products={products || []}
+            onOpenAdd={() => {
+              setEditingProduct(null);
+              setProductModalVisible(true);
+            }}
+            onOpenEdit={(product) => {
+              setEditingProduct(product);
+              setProductModalVisible(true);
+            }}
+            onDelete={handleDeleteProduct}
+          />
+        )}
+
+        {/* INVENTORY */}
+
+        {activeTab === 'INVENTORY' && (
+          <InventoryScreen
+            onOpenMenu={() =>
+              setIsMenuOpen(true)
+            }
+            onOpenProfile={() =>
+              setProfileModalVisible(true)
+            }
+            user={user}
+            inventoryItems={inventoryItems || []}
+            onOpenAdd={() => {
+              setEditingInventory(null);
+              setInventoryModalVisible(true);
+            }}
+            onOpenEdit={(item) => {
+              setEditingInventory(item);
+              setInventoryModalVisible(true);
+            }}
+            onDelete={handleDeleteInventory}
+            onStockUpdate={handleQuickStockUpdate}
+          />
+        )}
+
+        {/* REPORTS */}
+
+        {activeTab === 'REPORTS' && (
+          <ReportsScreen
+            onOpenMenu={() =>
+              setIsMenuOpen(true)
+            }
+            onOpenProfile={() =>
+              setProfileModalVisible(true)
+            }
+            user={user}
+            inventoryItems={inventoryItems || []}
+            salesTransactions={salesTransactions || []}
+            stockTransactions={stockTransactions || []}
+          />
+        )}
+
+        {/* PROFILE */}
+
+        <ProfileModal
+          visible={profileModalVisible}
+          user={user}
+          onClose={() =>
+            setProfileModalVisible(false)
+          }
+          onSave={handleUpdateProfile}
+        />
+
+        {/* PRODUCT MODAL */}
+
+        <ProductModal
+          visible={productModalVisible}
+          product={editingProduct}
+          onClose={() => {
+            setProductModalVisible(false);
+            setEditingProduct(null);
+          }}
+          onSave={handleSaveProduct}
+        />
+
+        {/* INVENTORY MODAL */}
+
+        <InventoryModal
+          visible={inventoryModalVisible}
+          item={editingInventory}
+          onClose={() => {
+            setInventoryModalVisible(false);
+            setEditingInventory(null);
+          }}
+          onSave={handleSaveInventory}
+        />
+      </View>
+    );
   }
 
   // =====================================================
-  // MAIN APP
+  // ROOT — SafeAreaProvider + StatusBar wrap EVERY screen,
+  // not just the post-login app.
   // =====================================================
 
   return (
-<SafeAreaProvider>
-    <View style={styles.mainContainer}>      
-    <StatusBar
+    <SafeAreaProvider>
+      <StatusBar
         barStyle="light-content"
         backgroundColor={COLORS.darkBlue}
       />
-
-      {/* SIDE MENU */}
-
-      <SideMenu
-        visible={isMenuOpen}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        user={user}
-        onClose={() => setIsMenuOpen(false)}
-        onSignOut={() => {
-          setIsMenuOpen(false);
-          setCurrentScreen('SIGN_IN');
-        }}
-      />
-
-      {/* DASHBOARD */}
-
-      {activeTab === 'DASHBOARD' && (
-        <DashboardScreen
-          onOpenMenu={() =>
-            setIsMenuOpen(true)
-          }
-          onOpenProfile={() =>
-            setProfileModalVisible(true)
-          }
-          user={user}
-          products={products || []}
-          productsCount={products?.length || 0}
-          inventoryItems={inventoryItems || []}
-          onUpdateInventory={handleUpdateInventory}
-          onRecordSale={handleRecordSale}
-        />
-      )}
-
-      {/* PRODUCTS */}
-
-      {activeTab === 'PRODUCTS' && (
-        <ProductsScreen
-          onOpenMenu={() =>
-            setIsMenuOpen(true)
-          }
-          onOpenProfile={() =>
-            setProfileModalVisible(true)
-          }
-          user={user}
-          products={products || []}
-          onOpenAdd={() => {
-            setEditingProduct(null);
-            setProductModalVisible(true);
-          }}
-          onOpenEdit={(product) => {
-            setEditingProduct(product);
-            setProductModalVisible(true);
-          }}
-          onDelete={handleDeleteProduct}
-        />
-      )}
-
-      {/* INVENTORY */}
-
-      {activeTab === 'INVENTORY' && (
-        <InventoryScreen
-          onOpenMenu={() =>
-            setIsMenuOpen(true)
-          }
-          onOpenProfile={() =>
-            setProfileModalVisible(true)
-          }
-          user={user}
-          inventoryItems={inventoryItems || []}
-          onOpenAdd={() => {
-            setEditingInventory(null);
-            setInventoryModalVisible(true);
-          }}
-          onOpenEdit={(item) => {
-            setEditingInventory(item);
-            setInventoryModalVisible(true);
-          }}
-          onDelete={handleDeleteInventory}
-          onStockUpdate={handleQuickStockUpdate}
-        />
-      )}
-
-      {/* REPORTS */}
-
-      {activeTab === 'REPORTS' && (
-        <ReportsScreen
-          onOpenMenu={() =>
-            setIsMenuOpen(true)
-          }
-          onOpenProfile={() =>
-            setProfileModalVisible(true)
-          }
-          user={user}
-          inventoryItems={inventoryItems || []}
-          salesTransactions={salesTransactions || []}
-          stockTransactions={stockTransactions || []}
-        />
-      )}
-
-      {/* PROFILE */}
-
-      <ProfileModal
-        visible={profileModalVisible}
-        user={user}
-        onClose={() =>
-          setProfileModalVisible(false)
-        }
-        onSave={handleUpdateProfile}
-      />
-
-      {/* PRODUCT MODAL */}
-
-      <ProductModal
-        visible={productModalVisible}
-        product={editingProduct}
-        onClose={() => {
-          setProductModalVisible(false);
-          setEditingProduct(null);
-        }}
-        onSave={handleSaveProduct}
-      />
-
-      {/* INVENTORY MODAL */}
-
-      <InventoryModal
-        visible={inventoryModalVisible}
-        item={editingInventory}
-        onClose={() => {
-          setInventoryModalVisible(false);
-          setEditingInventory(null);
-        }}
-        onSave={handleSaveInventory}
-      />
-    </View>
-  </SafeAreaProvider>
+      {screenContent}
+    </SafeAreaProvider>
   );
 }
 

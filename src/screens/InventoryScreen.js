@@ -12,6 +12,9 @@ import {
 } from 'react-native';
 
 import Header from '../components/Header';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { COLORS } from '../constants/theme';
 
 export default function InventoryScreen({
@@ -113,6 +116,7 @@ export default function InventoryScreen({
   };
 
   return (
+    <SafeAreaView style={styles.safeArea}>
     <TouchableWithoutFeedback
       onPress={() => {
         closeDropdown();
@@ -511,10 +515,15 @@ export default function InventoryScreen({
         </View>
       </ScrollView>
     </TouchableWithoutFeedback>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+  },
   tabContainer: {
     flex: 1,
     backgroundColor: '#F3F4F6',

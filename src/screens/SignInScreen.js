@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, StatusBar, StyleSheet, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StatusBar,
+  StyleSheet,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/theme';
 
 import { signInWithEmailAndPassword, getAuth } from 'firebase/auth';
 import app from '../../firebaseConfig';
-
+import { Ionicons } from '@expo/vector-icons';
 const auth = getAuth(app);
 
 export default function SignInScreen({ onSignIn, onNavigateSignUp, onNavigateRecover }) {
@@ -15,8 +26,7 @@ export default function SignInScreen({ onSignIn, onNavigateSignUp, onNavigateRec
 
   // Validation functions
   const validateEmail = (emailStr) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(emailStr);
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;    return emailRegex.test(emailStr);
   };
 
   const handlePressSignIn = async () => {
@@ -50,7 +60,7 @@ export default function SignInScreen({ onSignIn, onNavigateSignUp, onNavigateRec
 
     console.log('Firebase login successful:', user.uid);
 
-    // Keep your existing navigation
+
     const extractedName = cleanEmail.split('@')[0];
     const formattedName =
       extractedName.charAt(0).toUpperCase() +
@@ -82,87 +92,133 @@ export default function SignInScreen({ onSignIn, onNavigateSignUp, onNavigateRec
 };
 
   return (
-    <SafeAreaView style={styles.authContainer}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.darkBlue} />
-      <View style={styles.authTopHeader}>
-        <View style={styles.logoBadge}>
-          <Text style={styles.logoText}>AR</Text>
-        </View>
-        <Text style={styles.authBrandTitle}>ARTechSolutions</Text>
-        <Text style={styles.authBrandSubtitle}>INVENTORY & POS SYSTEM</Text>
-      </View>
+  <SafeAreaView style={styles.authContainer}>
+    <StatusBar barStyle="light-content" backgroundColor={COLORS.darkBlue} />
 
-      <View style={styles.authCard}>
-        <Text style={styles.authTitle}>Welcome back</Text>
-        <Text style={styles.authSubtitle}>Sign in to your admin account</Text>
+    <KeyboardAvoidingView
+      style={styles.keyboardContainer}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
 
-        {/* Display Error Message Banner if validation fails */}
-        {errorMessage ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{errorMessage}</Text>
+        <View style={styles.authTopHeader}>
+          <View style={styles.logoBadge}>
+            <Text style={styles.logoText}>AR</Text>
           </View>
-        ) : null}
 
-        <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder="admin@artech.ph"
-          placeholderTextColor={COLORS.textLight}
-          value={email}
-          onChangeText={(val) => { setEmail(val); setErrorMessage(''); }}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
+          <Text style={styles.authBrandTitle}>ARTechSolutions</Text>
 
-        <Text style={styles.inputLabel}>PASSWORD</Text>
-        <View style={styles.passwordContainer}>
-  <TextInput
-    style={styles.passwordInput}
-    placeholder="Password"
-    placeholderTextColor={COLORS.textLight}
-    secureTextEntry={!showPassword}
-    value={password}
-    onChangeText={(val) => {
-      setPassword(val);
-      setErrorMessage('');
-    }}
-  />
-
-  <TouchableOpacity
-    style={styles.passwordToggle}
-    onPress={() => setShowPassword(!showPassword)}
-  >
-    <Text style={styles.passwordToggleText}>
-      {showPassword ? 'Hide' : 'View'}
-    </Text>
-  </TouchableOpacity>
-</View>
-
-        <TouchableOpacity style={styles.forgotButton} onPress={onNavigateRecover}>
-          <Text style={styles.forgotText}>Forgot password?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.primaryButton} onPress={handlePressSignIn}>
-          <Text style={styles.primaryButtonText}>Sign In</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.switchAuthContainer} onPress={onNavigateSignUp}>
-          <Text style={styles.switchAuthText}>
-            Don't have an account? <Text style={styles.boldText}>Sign Up</Text>
+          <Text style={styles.authBrandSubtitle}>
+            INVENTORY & POS SYSTEM
           </Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
-  );
+        </View>
+
+        <View style={styles.authCard}>
+          <Text style={styles.authTitle}>Welcome back</Text>
+
+          <Text style={styles.authSubtitle}>
+            Sign in to your admin account
+          </Text>
+
+          {errorMessage ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          ) : null}
+
+          <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
+
+          <TextInput
+            style={styles.textInput}
+            placeholder="admin@artech.ph"
+            placeholderTextColor={COLORS.textLight}
+            value={email}
+            onChangeText={(val) => {
+              setEmail(val);
+              setErrorMessage('');
+            }}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+
+          <Text style={styles.inputLabel}>PASSWORD</Text>
+
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              placeholderTextColor={COLORS.textLight}
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={(val) => {
+                setPassword(val);
+                setErrorMessage('');
+              }}
+            />
+
+            <TouchableOpacity
+              style={styles.passwordToggle}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons
+  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+  size={20}
+  color={COLORS.primaryBlue}
+/>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.forgotButton}
+            onPress={onNavigateRecover}
+          >
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={handlePressSignIn}
+          >
+            <Text style={styles.primaryButtonText}>Sign In</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.switchAuthContainer}
+            onPress={onNavigateSignUp}
+          >
+            <Text style={styles.switchAuthText}>
+              Don't have an account?{' '}
+              <Text style={styles.boldText}>Sign Up</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+      </ScrollView>
+    </KeyboardAvoidingView>
+  </SafeAreaView>
+);
 }
 
 const styles = StyleSheet.create({
   authContainer: {
-    flex: 1,
-    backgroundColor: COLORS.darkBlue,
-    justify: 'center',
-    alignItems: 'center',
-  },
+  flex: 1,
+  backgroundColor: COLORS.darkBlue,
+},
+
+keyboardContainer: {
+  flex: 1,
+},
+
+scrollContainer: {
+  flexGrow: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingVertical: 20,
+},
   authTopHeader: {
     alignItems: 'center',
     marginVertical: 20,
@@ -261,11 +317,7 @@ passwordToggle: {
   paddingHorizontal: 12,
 },
 
-passwordToggleText: {
-  color: COLORS.primaryBlue,
-  fontSize: 12,
-  fontWeight: '600',
-},
+
   forgotButton: {
     alignSelf: 'flex-end',
     marginTop: 8,

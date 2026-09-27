@@ -7,7 +7,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS } from '../constants/theme';
 
 export default function SideMenu({
@@ -18,6 +18,8 @@ export default function SideMenu({
   onSignOut,
   user,
 }) {
+  const insets = useSafeAreaInsets();
+
   if (!visible) return null;
 
   const menuItems = [
@@ -33,9 +35,9 @@ export default function SideMenu({
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
       <View style={styles.overlay}>
-
         {/* Backdrop */}
         <TouchableOpacity
           style={styles.backdrop}
@@ -43,9 +45,19 @@ export default function SideMenu({
           onPress={onClose}
         />
 
-        <SafeAreaView style={styles.menuContainer}>
-          <View style={styles.innerContent}>
-
+        {/* Side Drawer Container */}
+        <View style={styles.menuContainer}>
+          <View
+            style={[
+              styles.innerContent,
+              {
+                paddingTop: Math.max(insets.top, 12),
+                paddingBottom: Math.max(insets.bottom, 16),
+                paddingLeft: 16 + insets.left,
+                paddingRight: 16 + insets.right,
+              },
+            ]}
+          >
             {/* Header / App Info */}
             <View style={styles.headerSection}>
               <View style={styles.logoBadge}>
@@ -53,11 +65,10 @@ export default function SideMenu({
               </View>
 
               <View style={styles.headerTextContainer}>
-                <Text style={styles.brandTitle}>
+                <Text style={styles.brandTitle} numberOfLines={1}>
                   ARTechSolutions
                 </Text>
-
-                <Text style={styles.brandSubtitle}>
+                <Text style={styles.brandSubtitle} numberOfLines={1}>
                   Inventory & POS v1.0
                 </Text>
               </View>
@@ -68,7 +79,6 @@ export default function SideMenu({
               <Text style={styles.userName}>
                 {user?.name || 'Admin User'}
               </Text>
-
               <Text style={styles.userEmail}>
                 {user?.email || 'admin@artech.ph'}
               </Text>
@@ -107,7 +117,6 @@ export default function SideMenu({
 
             {/* Bottom Actions */}
             <View style={styles.footerSection}>
-
               <TouchableOpacity
                 style={styles.signOutButton}
                 activeOpacity={0.7}
@@ -127,11 +136,9 @@ export default function SideMenu({
                   Close Menu
                 </Text>
               </TouchableOpacity>
-
             </View>
-
           </View>
-        </SafeAreaView>
+        </View>
       </View>
     </Modal>
   );
@@ -145,28 +152,19 @@ const styles = StyleSheet.create({
   },
 
   backdrop: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
+    ...StyleSheet.absoluteFillObject,
   },
 
   menuContainer: {
     width: '78%',
-
+    height: '100%',
     backgroundColor: COLORS.white,
+    zIndex: 1,
   },
 
   innerContent: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-
-    // Important for Android bottom navigation area
-    paddingBottom: Platform.OS === 'android' ? 18 : 8,
-
-    justifyContent: 'space-between',
+    justifyContent: 'space-between', // was invalid "justify" key
   },
 
   /* ---------- HEADER ---------- */
@@ -265,9 +263,6 @@ const styles = StyleSheet.create({
 
   footerSection: {
     paddingTop: 12,
-
-    // Extra space above Android navigation buttons
-    paddingBottom: Platform.OS === 'android' ? 10 : 4,
   },
 
   signOutButton: {

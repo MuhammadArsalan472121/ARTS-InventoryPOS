@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import Header from '../components/Header';
 import { COLORS } from '../constants/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ProductsScreen({ 
   onOpenMenu, 
@@ -44,6 +45,7 @@ const categories = [
   });
 
   return (
+    <SafeAreaView style={styles.safeArea}>
     <ScrollView style={styles.tabContainer} showsVerticalScrollIndicator={false}>
       <Header 
         title="Products" 
@@ -198,11 +200,18 @@ const categories = [
           </View>
         )}
       </View>
+
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  
   tabContainer: { 
     flex: 1,
     backgroundColor: '#F3F4F6',

@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView,StatusBar, KeyboardAvoidingView, StyleSheet,Platform } from 'react-native';
 import { COLORS } from '../constants/theme';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   createUserWithEmailAndPassword,
   getAuth,
@@ -21,11 +21,12 @@ export default function SignUpScreen({ onSignUpSuccess, onNavigateSignIn }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-
+  const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   // Helper validation functions
   const validateEmail = (emailStr) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(emailStr);
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;   
+   return emailRegex.test(emailStr);
   };
 
   const validatePassword = (pass) => {
@@ -49,7 +50,7 @@ export default function SignUpScreen({ onSignUpSuccess, onNavigateSignIn }) {
 
   if (!validatePassword(password)) {
     setErrorMessage(
-      'Password must be at least 8 characters and contain at least 1 special character (!@#$%^&*).'
+      'Please enter a valid password (minimum 8 characters with at least 1 special character).'
     );
     return;
   }
@@ -59,41 +60,42 @@ export default function SignUpScreen({ onSignUpSuccess, onNavigateSignIn }) {
     return;
   }
 
+  setLoading(true);
+
   try {
     const userCredential = await createUserWithEmailAndPassword(
-  auth,
-  email.trim(),
-  password
-);
+      auth,
+      email.trim(),
+      password
+    );
 
-const user = userCredential.user;
+    const user = userCredential.user;
 
-console.log('Firebase user created:', user.uid);
-// Send email verification
-await sendEmailVerification(user);
+    console.log('Firebase user created:', user.uid);
 
-console.log('Verification email sent:', user.email);
+    // Send email verification
+    await sendEmailVerification(user);
 
-// Save additional user information in Firestore
-await setDoc(doc(db, 'users', user.uid), {
-  name: name.trim(),
-  email: email.trim(),
-  phone: phone.trim(),
-  role: 'Admin',
-  createdAt: serverTimestamp(),
-});
+    console.log('Verification email sent:', user.email);
 
-console.log('User profile saved to Firestore');
+    // Save additional user information in Firestore
+    await setDoc(doc(db, 'users', user.uid), {
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      role: 'Admin',
+      createdAt: serverTimestamp(),
+    });
 
-Alert.alert(
-  'Verify Your Email',
-  'Your account has been created successfully. A verification link has been sent to your email. Please check your inbox or spam folder and verify your email before signing in.'
-);
+    console.log('User profile saved to Firestore');
 
-onSignUpSuccess();
-
+    setLoading(false);
+    setShowSuccess(true);
+    
   } catch (error) {
     console.log('Firebase signup error:', error);
+
+    setLoading(false);
 
     if (error.code === 'auth/email-already-in-use') {
       setErrorMessage('This email is already registered.');
@@ -107,8 +109,22 @@ onSignUpSuccess();
   }
 };
   return (
-    <SafeAreaView style={styles.authContainer}>
-      <ScrollView style={{ flex: 1, width: '100%' }}>
+  <SafeAreaView style={styles.authContainer}>
+    <StatusBar
+      barStyle="light-content"
+      backgroundColor={COLORS.darkBlue}
+    />
+
+    <KeyboardAvoidingView
+      style={styles.keyboardContainer}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.authTopHeader}>
           <View style={styles.logoBadge}>
             <Text style={styles.logoText}>AR</Text>
@@ -131,7 +147,7 @@ onSignUpSuccess();
           <Text style={styles.inputLabel}>FULL NAME *</Text>
           <TextInput
             style={styles.textInput}
-            placeholder="e.g. Maria Santos"
+            placeholder="Muhammad Ahmed"
             placeholderTextColor={COLORS.textLight}
             value={name}
             onChangeText={(val) => { setName(val); setErrorMessage(''); }}
@@ -140,7 +156,7 @@ onSignUpSuccess();
           <Text style={styles.inputLabel}>EMAIL ADDRESS *</Text>
           <TextInput
             style={styles.textInput}
-            placeholder="your@email.com"
+            placeholder="ahmed@gmail.com"
             placeholderTextColor={COLORS.textLight}
             value={email}
             onChangeText={(val) => { setEmail(val); setErrorMessage(''); }}
@@ -151,7 +167,7 @@ onSignUpSuccess();
           <Text style={styles.inputLabel}>PHONE NUMBER</Text>
           <TextInput
             style={styles.textInput}
-            placeholder="+63 917 000 0000"
+            placeholder="0300 1234567"
             placeholderTextColor={COLORS.textLight}
             value={phone}
             onChangeText={setPhone}
@@ -161,7 +177,7 @@ onSignUpSuccess();
           <Text style={styles.inputLabel}>PASSWORD *</Text>
           <TextInput
             style={styles.textInput}
-            placeholder="Min 8 chars with 1 special character (@,#,$)"
+            placeholder="Enter password"
             placeholderTextColor={COLORS.textLight}
             secureTextEntry
             value={password}
@@ -189,7 +205,57 @@ onSignUpSuccess();
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+      </KeyboardAvoidingView>
+
+{loading && (
+  <View style={styles.loadingOverlay}>
+    <View style={styles.loadingCard}>
+      <View style={styles.loadingCircle}>
+        <Text style={styles.loadingIcon}>AR</Text>
+      </View>
+
+      <Text style={styles.loadingTitle}>Creating Account</Text>
+
+      <Text style={styles.loadingText}>
+        Please wait while we create your account...
+      </Text>
+
+      <View style={styles.loadingBar}>
+        <View style={styles.loadingBarProgress} />
+      </View>
+    </View>
+  </View>
+)}
+
+{showSuccess && (
+  <View style={styles.loadingOverlay}>
+    <View style={styles.successCard}>
+      <View style={styles.successCircle}>
+        <Text style={styles.successCheck}>✓</Text>
+      </View>
+
+      <Text style={styles.successTitle}>Account Created!</Text>
+
+      <Text style={styles.successText}>
+        A verification link has been sent to your email.
+        {'\n'}
+        Please check your inbox or spam folder.
+      </Text>
+
+      <TouchableOpacity
+        style={styles.successButton}
+        onPress={() => {
+          setShowSuccess(false);
+          onSignUpSuccess();
+        }}
+      >
+        <Text style={styles.successButtonText}>Continue</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+)}
+
+</SafeAreaView>
   );
 }
 
@@ -197,8 +263,7 @@ const styles = StyleSheet.create({
   authContainer: {
     flex: 1,
     backgroundColor: COLORS.darkBlue,
-    justifyContent: 'center',
-    alignItems: 'center',
+    
   },
   authTopHeader: {
     alignItems: 'center',
@@ -229,13 +294,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   authCard: {
-    width: '90%',
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: 20,
-    alignSelf: 'center',
-    marginVertical: 10,
-  },
+  width: '90%',
+  backgroundColor: COLORS.white,
+  borderRadius: 20,
+  padding: 20,
+  alignSelf: 'center',
+  marginVertical: 10,
+},
   authTitle: {
     fontSize: 22,
     fontWeight: 'bold',
@@ -301,4 +366,132 @@ const styles = StyleSheet.create({
     color: COLORS.primaryBlue,
     fontWeight: 'bold',
   },
+  keyboardContainer: {
+  flex: 1,
+},
+
+scrollContainer: {
+  flexGrow: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingVertical: 20,
+  
+},
+loadingOverlay: {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: 'rgba(15, 23, 42, 0.75)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  zIndex: 1000,
+},
+
+loadingCard: {
+  width: '82%',
+  backgroundColor: COLORS.white,
+  borderRadius: 20,
+  padding: 25,
+  alignItems: 'center',
+},
+
+loadingCircle: {
+  width: 55,
+  height: 55,
+  borderRadius: 28,
+  backgroundColor: COLORS.accentYellow,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginBottom: 15,
+},
+
+loadingIcon: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  color: COLORS.darkBlue,
+},
+
+loadingTitle: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: COLORS.textDark,
+  marginBottom: 8,
+},
+
+loadingText: {
+  fontSize: 13,
+  color: COLORS.textLight,
+  textAlign: 'center',
+  lineHeight: 20,
+},
+
+loadingBar: {
+  width: '100%',
+  height: 5,
+  backgroundColor: COLORS.borderGray,
+  borderRadius: 5,
+  marginTop: 20,
+  overflow: 'hidden',
+},
+
+loadingBarProgress: {
+  width: '60%',
+  height: '100%',
+  backgroundColor: COLORS.primaryBlue,
+  borderRadius: 5,
+},
+successCard: {
+  width: '82%',
+  backgroundColor: COLORS.white,
+  borderRadius: 20,
+  padding: 25,
+  alignItems: 'center',
+},
+
+successCircle: {
+  width: 60,
+  height: 60,
+  borderRadius: 30,
+  backgroundColor: COLORS.accentYellow,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginBottom: 15,
+},
+
+successCheck: {
+  fontSize: 30,
+  fontWeight: 'bold',
+  color: COLORS.darkBlue,
+},
+
+successTitle: {
+  fontSize: 20,
+  fontWeight: 'bold',
+  color: COLORS.darkBlue,
+  marginBottom: 10,
+},
+
+successText: {
+  fontSize: 13,
+  color: COLORS.textLight,
+  textAlign: 'center',
+  lineHeight: 20,
+},
+
+successButton: {
+  width: '100%',
+  backgroundColor: COLORS.primaryBlue,
+  borderRadius: 8,
+  paddingVertical: 12,
+  alignItems: 'center',
+  marginTop: 20,
+},
+
+successButtonText: {
+  color: COLORS.white,
+  fontSize: 15,
+  fontWeight: 'bold',
+},
 });
