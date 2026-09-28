@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Alert } from 'react-native';
 import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import Header from '../components/Header';
 import { COLORS } from '../constants/theme';
@@ -9,6 +10,9 @@ export default function ProductsScreen({
   onOpenProfile, 
   user, 
   products = [], 
+  customCategories = [],
+  setCustomCategories,
+  productBusy,
   onOpenAdd, 
   onOpenEdit, 
   onDelete 
@@ -27,13 +31,14 @@ export default function ProductsScreen({
   // Get unique categories from products dynamically
 const categories = [
   'All',
-  ...Array.from(
-    new Set(
-      safeProducts
-        .map((p) => p?.category)
-        .filter((category) => category && category.trim() !== '')
-    )
-  ),
+  'Electronics',
+  'Furniture',
+  'Food & Beverages',
+  'Clothing',
+  'Pharmacy',
+  'Accessories',
+  'Other',
+  ...customCategories,
 ];
   const filteredProducts = safeProducts.filter((p) => {
     const query = search.toLowerCase();
@@ -43,7 +48,36 @@ const categories = [
     const matchesCategory = categoryFilter === 'All' || p?.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
+      
+       const addCustomCategory = () => {
+  Alert.prompt(
+    'Add Category',
+    'Enter your category name:',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Add',
+        onPress: (category) => {
+          const newCategory = category?.trim();
 
+          if (!newCategory) return;
+
+          if (
+            categories.some(
+              (cat) => cat.toLowerCase() === newCategory.toLowerCase()
+            )
+          ) {
+            Alert.alert('Category Exists', 'This category already exists.');
+            return;
+          }
+
+          setCustomCategories([...customCategories, newCategory]);
+        },
+      },
+    ],
+    'plain-text'
+  );
+};
   return (
     <SafeAreaView style={styles.safeArea}>
     <ScrollView style={styles.tabContainer} showsVerticalScrollIndicator={false}>
@@ -60,7 +94,15 @@ const categories = [
             <Text style={styles.pageTitle}>Products</Text>
             <Text style={styles.pageSubtitle}>Manage your catalog</Text>
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={onOpenAdd} activeOpacity={0.8}>
+          <TouchableOpacity
+  style={[
+    styles.addButton,
+    productBusy && styles.disabledButton
+  ]}
+  onPress={onOpenAdd}
+  disabled={productBusy}
+  activeOpacity={0.8}
+>
             <Text style={styles.addButtonText}>+ Add</Text>
           </TouchableOpacity>
         </View>
@@ -81,16 +123,15 @@ const categories = [
   style={styles.filterRow}
   contentContainerStyle={{ paddingRight: 10 }}
 >
-  {[
-  'All',
-  'Electronics',
-  'Furniture',
-  'Food & Beverages',
-  'Clothing',
-  'Pharmacy',
-  'Accessories',
-  'Other'
-].map((cat) => (
+  <TouchableOpacity
+    style={styles.addCategoryChip}
+    onPress={addCustomCategory}
+    activeOpacity={0.7}
+  >
+    <Text style={styles.addCategoryText}>+ Add Category</Text>
+  </TouchableOpacity>
+
+  {categories.map((cat) => (
     <TouchableOpacity
       key={cat}
       style={[
@@ -159,7 +200,7 @@ const categories = [
                   {hasCost ? (
                     <View style={styles.specChip}>
                       <Text style={styles.specLabel}>COST PRICE</Text>
-                      <Text style={[styles.specValue, styles.costValueText]}>PHP {costVal}</Text>
+                      <Text style={[styles.specValue, styles.costValueText]}>PKR {costVal}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -168,24 +209,40 @@ const categories = [
               {/* Card Footer: Sales Price, Stock, Profit & Action Buttons */}
               <View style={styles.itemCardFooter}>
                 <View>
-                  <Text style={styles.priceText}>PHP {salesVal}</Text>
+                  <Text style={styles.priceText}>PKR {salesVal}</Text>
                   <View style={styles.statsInlineRow}>
                     <Text style={styles.stockText}>
                       Stock: <Text style={styles.darkBoldText}>{item.stock ?? 0}</Text>
                     </Text>
                     <Text style={styles.statDot}>•</Text>
                     <Text style={styles.stockText}>
-                      Profit: <Text style={styles.profitHighlight}>PHP {profitVal}</Text>
+                      Profit: <Text style={styles.profitHighlight}>PKR {profitVal}</Text>
                     </Text>
                   </View>
                 </View>
 
                 {/* Actions */}
                 <View style={styles.actionRow}>
-                  <TouchableOpacity style={styles.editButton} onPress={() => onOpenEdit(item)} activeOpacity={0.7}>
+                  <TouchableOpacity
+  style={[
+    styles.editButton,
+    productBusy && styles.disabledButton
+  ]}
+  onPress={() => onOpenEdit(item)}
+  disabled={productBusy}
+  activeOpacity={0.7}
+>
                     <Text style={styles.editButtonText}>Edit</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(item.id)} activeOpacity={0.7}>
+                  <TouchableOpacity
+  style={[
+    styles.deleteButton,
+    productBusy && styles.disabledButton
+  ]}
+  onPress={() => onDelete(item.id)}
+  disabled={productBusy}
+  activeOpacity={0.7}
+>
                     <Text style={styles.deleteButtonText}>Delete</Text>
                   </TouchableOpacity>
                 </View>
@@ -284,6 +341,19 @@ const styles = StyleSheet.create({
     color: COLORS.white || '#FFFFFF', 
     fontWeight: '700' 
   },
+  addCategoryChip: {
+  backgroundColor: COLORS.accentYellow || '#F59E0B',
+  paddingHorizontal: 14,
+  paddingVertical: 8,
+  borderRadius: 20,
+  marginRight: 8,
+},
+
+addCategoryText: {
+  fontSize: 12,
+  fontWeight: '700',
+  color: COLORS.darkBlue || '#1E3A8A',
+},
   itemCard: { 
     backgroundColor: COLORS.white || '#FFFFFF', 
     borderRadius: 14, 
@@ -423,4 +493,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  disabledButton: {
+  opacity: 0.5,
+},
+  
 });

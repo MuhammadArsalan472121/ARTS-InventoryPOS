@@ -14,7 +14,14 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '../constants/theme';
 
-export default function ProductModal({ visible, product, onClose, onSave }) {
+export default function ProductModal({
+  visible,
+  product,
+  onClose,
+  onSave,
+  customCategories = [],
+  productBusy = false,
+}) {
   const [form, setForm] = useState({
     name: '',
     brand: '',
@@ -45,14 +52,15 @@ export default function ProductModal({ visible, product, onClose, onSave }) {
 
   // Categories
   const categories = [
-    'Electronics',
-    'Furniture',
-    'Food & Beverages',
-    'Clothing',
-    'Pharmacy',
-    'Accessories',
-    'Other'
-  ];
+  'Electronics',
+  'Furniture',
+  'Food & Beverages',
+  'Clothing',
+  'Pharmacy',
+  'Accessories',
+  'Other',
+  ...customCategories,
+];
 
   // Validity options
   const validityOptions = [
@@ -804,15 +812,21 @@ export default function ProductModal({ visible, product, onClose, onSave }) {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleSave}
-            >
-              <Text style={styles.saveButtonText}>
-                {product
-                  ? 'Update'
-                  : 'Save Product'}
-              </Text>
-            </TouchableOpacity>
+  style={[
+    styles.saveButton,
+    productBusy && styles.disabledButton
+  ]}
+  onPress={handleSave}
+  disabled={productBusy}
+>
+  <Text style={styles.saveButtonText}>
+    {productBusy
+      ? 'Saving...'
+      : product
+      ? 'Update'
+      : 'Save Product'}
+  </Text>
+</TouchableOpacity>
 
           </View>
 
@@ -1035,4 +1049,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  disabledButton: {
+  opacity: 0.5,
+},
 });

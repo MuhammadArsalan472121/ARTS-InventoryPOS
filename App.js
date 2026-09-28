@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import {
   View,
+  Text,
   StatusBar,
   StyleSheet,
   Alert,
 } from 'react-native';
+
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -17,9 +20,7 @@ import {
 } from 'firebase/firestore';
 
 import { db } from './firebaseConfig';
-
 import { COLORS } from './src/constants/theme';
-
 
 import SignInScreen from './src/screens/SignInScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
@@ -40,68 +41,88 @@ export default function App() {
   // PRODUCTS
   // =====================================================
 
+  const [productNotice, setProductNotice] = useState(null);
   const [products, setProducts] = useState([]);
+  const [customCategories, setCustomCategories] = useState([]);
+  const [productBusy, setProductBusy] = useState(false);
 
   const loadProducts = async () => {
-    console.log('🔥 loadProducts CALLED');
-  try {
-    const snapshot = await getDocs(
-      collection(db, 'products')
-    );
-                                                                       
-    const firebaseProducts = snapshot.docs.map((document) => ({
-      id: document.id,
-      ...document.data(),
-    }));
+    try {
+      const snapshot = await getDocs(
+        collection(db, 'products')
+      );
 
-    // Products
-    setProducts(firebaseProducts);
+      const firebaseProducts = snapshot.docs.map(
+        (document) => ({
+          id: document.id,
+          ...document.data(),
+        })
+      );
 
-    // Inventory comes from the same Firebase products
-    const firebaseInventory = firebaseProducts.map((product) => ({
-      id: product.id,
-      name: product.name,
-      stock: Number(product.stock) || 0,
-      minStock: Number(product.minStock) || 5,
-      price: Number(product.price) || 0,
-      costPrice: Number(product.costPrice) || 0,
-    }));
+      setProducts(firebaseProducts);
 
-    setInventoryItems(firebaseInventory);
+      const firebaseInventory =
+        firebaseProducts.map((product) => ({
+          id: product.id,
+          name: product.name,
+          stock: Number(product.stock) || 0,
+          minStock:
+            Number(product.minStock) || 5,
+          price: Number(product.price) || 0,
+          costPrice:
+            Number(product.costPrice) || 0,
+        }));
 
-    console.log('Products loaded:', firebaseProducts);
-    console.log('Inventory loaded:', firebaseInventory);
+      setInventoryItems(
+        firebaseInventory
+      );
 
-  } catch (error) {
-    console.log('Error loading products:', error);
-  }
-};
+    } catch (error) {
+      console.log(
+        'Error loading products:',
+        error
+      );
+    }
+  };
 
-  
-  const [currentScreen, setCurrentScreen] = useState('SIGN_IN');
-  const [activeTab, setActiveTab] = useState('DASHBOARD');
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // =====================================================
+  // SCREEN / MENU
+  // =====================================================
+
+  const [currentScreen, setCurrentScreen] =
+    useState('SIGN_IN');
+
+  const [activeTab, setActiveTab] =
+    useState('DASHBOARD');
+
+  const [isMenuOpen, setIsMenuOpen] =
+    useState(false);
 
   // =====================================================
   // TRANSACTIONS
   // =====================================================
 
-  const [salesTransactions, setSalesTransactions] = useState([]);
+  const [salesTransactions, setSalesTransactions] =
+    useState([]);
+
+  const [stockTransactions, setStockTransactions] =
+    useState([]);
+
   const loadSales = async () => {
   try {
     const snapshot = await getDocs(
       collection(db, 'sales')
     );
 
-    const firebaseSales = snapshot.docs.map((document) => ({
-      id: document.id,
-      ...document.data(),
-    }));
+    const firebaseSales =
+      snapshot.docs.map(
+        (document) => ({
+          ...document.data(),
+          id: document.id,
+        })
+      );
 
-    setSalesTransactions(firebaseSales);
-
-    console.log(
-      'Sales loaded from Firebase:',
+    setSalesTransactions(
       firebaseSales
     );
 
@@ -112,34 +133,34 @@ export default function App() {
     );
   }
 };
+  const loadStockMovements = async () => {
+    try {
+      const snapshot = await getDocs(
+        collection(
+          db,
+          'stockMovements'
+        )
+      );
 
-const loadStockMovements = async () => {
-  try {
-    const snapshot = await getDocs(
-      collection(db, 'stockMovements')
-    );
+      const firebaseMovements =
+        snapshot.docs.map(
+          (document) => ({
+            id: document.id,
+            ...document.data(),
+          })
+        );
 
-    const firebaseMovements = snapshot.docs.map((document) => ({
-      id: document.id,
-      ...document.data(),
-    }));
+      setStockTransactions(
+        firebaseMovements
+      );
 
-    setStockTransactions(firebaseMovements);
-
-    console.log(
-      'Stock movements loaded from Firebase:',
-      firebaseMovements
-    );
-
-  } catch (error) {
-    console.log(
-      'Error loading stock movements:',
-      error
-    );
-  }
-};
-
-  const [stockTransactions, setStockTransactions] = useState([]);
+    } catch (error) {
+      console.log(
+        'Error loading stock movements:',
+        error
+      );
+    }
+  };
 
   // =====================================================
   // USER
@@ -154,12 +175,11 @@ const loadStockMovements = async () => {
     useState(false);
 
   // =====================================================
-  // PRODUCTS + INVENTORY
+  // INVENTORY
   // =====================================================
 
-  
-
-  const [inventoryItems, setInventoryItems] = useState([]);
+  const [inventoryItems, setInventoryItems] =
+    useState([]);
 
   // =====================================================
   // MODALS
@@ -168,7 +188,8 @@ const loadStockMovements = async () => {
   const [productModalVisible, setProductModalVisible] =
     useState(false);
 
-  const [editingProduct, setEditingProduct] = useState(null);
+  const [editingProduct, setEditingProduct] =
+    useState(null);
 
   const [inventoryModalVisible, setInventoryModalVisible] =
     useState(false);
@@ -183,9 +204,18 @@ const loadStockMovements = async () => {
   const getLocalDateString = () => {
     const now = new Date();
 
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
+    const year =
+      now.getFullYear();
+
+    const month =
+      String(
+        now.getMonth() + 1
+      ).padStart(2, '0');
+
+    const day =
+      String(
+        now.getDate()
+      ).padStart(2, '0');
 
     return `${year}-${month}-${day}`;
   };
@@ -194,115 +224,620 @@ const loadStockMovements = async () => {
   // SIGN IN
   // =====================================================
 
-  const handleSignIn = async (credentials) => {
-  if (credentials?.email) {
-    const email = credentials.email;
+  const handleSignIn = async (
+    credentials
+  ) => {
 
-    const extractedName =
-      credentials.name ||
-      email.split('@')[0].toUpperCase();
+    if (credentials?.email) {
 
-    setUser({
-      name: extractedName,
-      email,
-    });
-  }
+      const email =
+        credentials.email;
 
-  
-  setCurrentScreen('APP');
+      const extractedName =
+        credentials.name ||
+        email
+          .split('@')[0]
+          .toUpperCase();
 
-  // Load Firebase data in parallel
-  try {
-  await Promise.all([
-    loadProducts(),
-    loadSales(),
-    loadStockMovements(),
-  ]);
-} catch (error) {
-  console.log('Error loading app data:', error);
-}
-};
+      setUser({
+        name: extractedName,
+        email,
+      });
+    }
+
+    setCurrentScreen('APP');
+
+    try {
+
+      await Promise.all([
+        loadProducts(),
+        loadSales(),
+        loadStockMovements(),
+      ]);
+
+    } catch (error) {
+
+      console.log(
+        'Error loading app data:',
+        error
+      );
+    }
+  };
 
   // =====================================================
   // PROFILE
   // =====================================================
 
-  const handleUpdateProfile = (updatedUser) => {
+  const handleUpdateProfile = (
+    updatedUser
+  ) => {
+
     setUser(updatedUser);
-    setProfileModalVisible(false);
+
+    setProfileModalVisible(
+      false
+    );
   };
 
   // =====================================================
-  // RECORD SALE
+  // RECORD SALE FROM POS
   // =====================================================
 
-  const handleRecordSale = async (newTx) => {
-  if (!newTx) return;
+  const handleRecordSale = async (
+    newTx
+  ) => {
+
+    if (!newTx) return;
+
+    try {
+
+      const transaction = {
+        ...newTx,
+
+        id:
+          newTx.id ||
+          String(Date.now()),
+
+        date:
+          newTx.date ||
+          getLocalDateString(),
+
+        timestamp:
+          newTx.timestamp ||
+          new Date().toISOString(),
+      };
+
+      const docRef =
+        await addDoc(
+          collection(db, 'sales'),
+          transaction
+        );
+
+      const firebaseTransaction = {
+        ...transaction,
+        id: docRef.id,
+      };
+
+      setSalesTransactions(
+        (prev) => [
+          firebaseTransaction,
+          ...prev,
+        ]
+      );
+
+    } catch (error) {
+
+      console.log(
+        'Firebase sale error:',
+        error
+      );
+
+      Alert.alert(
+        'Error',
+        'Unable to save sale.'
+      );
+    }
+  };
+
+  // =====================================================
+  // REPORT SALES MANAGEMENT
+  // =====================================================
+
+  const handleAddReportSale = async (
+    saleData
+  ) => {
+
+    try {
+
+      const items =
+        Array.isArray(
+          saleData.items
+        )
+          ? saleData.items
+          : [];
+
+      if (!items.length) {
+        return false;
+      }
+
+      // -------------------------------------------------
+      // CHECK CURRENT STOCK
+      // -------------------------------------------------
+
+      for (const item of items) {
+
+        const inventoryItem =
+          (inventoryItems || []).find(
+            (inventory) =>
+              inventory.id ===
+              item.productId
+          );
+
+        if (!inventoryItem) {
+          Alert.alert(
+            'Product Not Found',
+            `${item.productName} is no longer available in Inventory.`
+          );
+
+          return false;
+        }
+
+        const currentStock =
+          Number(
+            inventoryItem.stock
+          ) || 0;
+
+        const requestedQuantity =
+          Number(
+            item.quantity
+          ) || 0;
+
+        if (
+          requestedQuantity >
+          currentStock
+        ) {
+
+          Alert.alert(
+            'Insufficient Stock',
+            `${item.productName} has only ${currentStock} item(s) available.`
+          );
+
+          return false;
+        }
+      }
+
+      // -------------------------------------------------
+      // CREATE SALE
+      // -------------------------------------------------
+
+      const sale = {
+        date:
+          saleData.date,
+
+        items:
+          items.map((item) => ({
+            productId:
+              item.productId,
+
+            productName:
+              item.productName,
+
+            quantity:
+              Number(
+                item.quantity
+              ) || 0,
+
+            price:
+              Number(
+                item.price
+              ) || 0,
+
+            costPrice:
+              Number(
+                item.costPrice
+              ) || 0,
+          })),
+
+        totalRevenue:
+          Number(
+            saleData.totalRevenue
+          ) || 0,
+
+        totalProfit:
+          Number(
+            saleData.totalProfit
+          ) || 0,
+
+        timestamp:
+          saleData.timestamp ||
+          new Date().toISOString(),
+      };
+
+      // -------------------------------------------------
+      // SAVE SALE TO FIREBASE
+      // -------------------------------------------------
+
+      const docRef =
+        await addDoc(
+          collection(db, 'sales'),
+          sale
+        );
+
+      const firebaseSale = {
+        id: docRef.id,
+        ...sale,
+      };
+
+      // -------------------------------------------------
+      // UPDATE FIREBASE INVENTORY
+      // -------------------------------------------------
+
+      for (const item of items) {
+
+        const inventoryItem =
+          (inventoryItems || []).find(
+            (inventory) =>
+              inventory.id ===
+              item.productId
+          );
+
+        if (!inventoryItem) {
+          continue;
+        }
+
+        const oldStock =
+          Number(
+            inventoryItem.stock
+          ) || 0;
+
+        const quantitySold =
+          Number(
+            item.quantity
+          ) || 0;
+
+        const newStock =
+          oldStock -
+          quantitySold;
+
+        await updateDoc(
+          doc(
+            db,
+            'products',
+            item.productId
+          ),
+          {
+            stock: newStock,
+          }
+        );
+      }
+
+      // -------------------------------------------------
+      // UPDATE LOCAL INVENTORY
+      // -------------------------------------------------
+
+      setInventoryItems(
+        (prev) =>
+          (prev || []).map(
+            (inventoryItem) => {
+
+              const soldItem =
+                items.find(
+                  (item) =>
+                    item.productId ===
+                    inventoryItem.id
+                );
+
+              if (!soldItem) {
+                return inventoryItem;
+              }
+
+              return {
+                ...inventoryItem,
+
+                stock:
+                  (Number(
+                    inventoryItem.stock
+                  ) || 0) -
+                  (Number(
+                    soldItem.quantity
+                  ) || 0),
+              };
+            }
+          )
+      );
+
+      // -------------------------------------------------
+      // UPDATE LOCAL PRODUCTS
+      // -------------------------------------------------
+
+      setProducts(
+        (prev) =>
+          (prev || []).map(
+            (product) => {
+
+              const soldItem =
+                items.find(
+                  (item) =>
+                    item.productId ===
+                    product.id
+                );
+
+              if (!soldItem) {
+                return product;
+              }
+
+              return {
+                ...product,
+
+                stock:
+                  (Number(
+                    product.stock
+                  ) || 0) -
+                  (Number(
+                    soldItem.quantity
+                  ) || 0),
+              };
+            }
+          )
+      );
+
+      // -------------------------------------------------
+      // CREATE STOCK MOVEMENTS
+      // -------------------------------------------------
+
+      for (const item of items) {
+
+        const quantitySold =
+          Number(
+            item.quantity
+          ) || 0;
+
+        if (
+          quantitySold <= 0
+        ) {
+          continue;
+        }
+
+        const movement = {
+          productId:
+            item.productId,
+
+          productName:
+            item.productName,
+
+          quantity:
+            quantitySold,
+
+          action: 'REMOVE',
+
+          date:
+            saleData.date,
+
+          timestamp:
+            new Date().toISOString(),
+        };
+
+        const movementRef =
+          await addDoc(
+            collection(
+              db,
+              'stockMovements'
+            ),
+            movement
+          );
+
+        setStockTransactions(
+          (prev) => [
+            {
+              id:
+                movementRef.id,
+              ...movement,
+            },
+            ...(prev || []),
+          ]
+        );
+      }
+
+      // -------------------------------------------------
+      // UPDATE SALES
+      // -------------------------------------------------
+
+      setSalesTransactions(
+        (prev) => [
+          firebaseSale,
+          ...(prev || []),
+        ]
+      );
+
+      console.log(
+        'Report sale added:',
+        firebaseSale
+      );
+
+      return true;
+
+    } catch (error) {
+
+      console.log(
+        'Firebase report sale add error:',
+        error
+      );
+
+      Alert.alert(
+        'Error',
+        'Unable to save the sales record.'
+      );
+
+      return false;
+    }
+  };
+
+  // =====================================================
+  // EDIT REPORT SALE
+  // =====================================================
+// =====================================================
+// EDIT REPORT SALE
+// =====================================================
+
+const handleEditReportSale = async (
+  id,
+  saleData
+) => {
 
   try {
-    const transaction = {
-      ...newTx,
-      id: newTx.id || String(Date.now()),
-      date: newTx.date || getLocalDateString(),
-      timestamp:
-        newTx.timestamp || new Date().toISOString(),
-    };
-
-    // Save sale to Firebase
-    const docRef = await addDoc(
-      collection(db, 'sales'),
-      transaction
-    );
-
-    // Add Firebase ID to local state
-    const firebaseTransaction = {
-      ...transaction,
-      id: docRef.id,
-    };
-
-    setSalesTransactions((prev) => [
-      firebaseTransaction,
-      ...prev,
-    ]);
 
     console.log(
-      'Sale saved to Firebase:',
-      firebaseTransaction
+      'Editing sale:',
+      id,
+      saleData
     );
+
+    if (!id) {
+
+      Alert.alert(
+        'Error',
+        'Sales record ID is missing.'
+      );
+
+      return false;
+    }
+
+    const updatedSale = {
+      date:
+        saleData.date,
+
+      totalRevenue:
+        Number(
+          saleData.totalRevenue
+        ) || 0,
+
+      totalProfit:
+        Number(
+          saleData.totalProfit
+        ) || 0,
+
+      items:
+        Array.isArray(
+          saleData.items
+        )
+          ? saleData.items
+          : [],
+    };
+
+    await updateDoc(
+      doc(
+        db,
+        'sales',
+        id
+      ),
+      updatedSale
+    );
+
+    setSalesTransactions(
+      (prev) =>
+        (prev || []).map(
+          (sale) =>
+            sale.id === id
+              ? {
+                  ...sale,
+                  ...updatedSale,
+                }
+              : sale
+        )
+    );
+
+    console.log(
+      'Sale edited successfully:',
+      id
+    );
+
+    return true;
 
   } catch (error) {
+
     console.log(
-      'Firebase sale error:',
+      'Firebase report sale edit error:',
       error
     );
 
     Alert.alert(
-      'Error',
-      'Unable to save sale.'
+      'Edit Sale Error',
+      error?.message ||
+        'Unable to edit the sales record.'
     );
+
+    return false;
   }
 };
+
+  // =====================================================
+  // DELETE REPORT SALE
+  // =====================================================
+
+  const handleDeleteReportSale = async (
+    id
+  ) => {
+
+    try {
+
+      await deleteDoc(
+        doc(db, 'sales', id)
+      );
+
+      setSalesTransactions(
+        (prev) =>
+          (prev || []).filter(
+            (sale) =>
+              sale.id !== id
+          )
+      );
+
+      return true;
+
+    } catch (error) {
+
+      console.log(
+        'Firebase report sale delete error:',
+        error
+      );
+
+      return false;
+    }
+  };
 
   // =====================================================
   // UPDATE INVENTORY FROM POS
   // =====================================================
 
-  const handleUpdateInventory = (updatedInventory) => {
-    setInventoryItems(updatedInventory);
+  const handleUpdateInventory = (
+    updatedInventory
+  ) => {
 
-    setProducts((prevProducts) =>
-      (prevProducts || []).map((prod) => {
-        const match = updatedInventory.find(
-          (inv) => inv.id === prod.id
-        );
+    setInventoryItems(
+      updatedInventory
+    );
 
-        return match
-          ? {
-              ...prod,
-              stock: match.stock,
-            }
-          : prod;
-      })
+    setProducts(
+      (prevProducts) =>
+        (prevProducts || []).map(
+          (prod) => {
+
+            const match =
+              updatedInventory.find(
+                (inv) =>
+                  inv.id ===
+                  prod.id
+              );
+
+            return match
+              ? {
+                  ...prod,
+                  stock:
+                    match.stock,
+                }
+              : prod;
+          }
+        )
     );
   };
 
@@ -311,333 +846,595 @@ const loadStockMovements = async () => {
   // =====================================================
 
   const recordStockMovement = async ({
-  productId,
-  productName,
-  quantity,
-  action,
-}) => {
-  const qty = Number(quantity) || 0;
-
-  if (!qty || qty <= 0) {
-    return;
-  }
-
-  const movement = {
     productId,
     productName,
-    quantity: qty,
+    quantity,
     action,
-    date: getLocalDateString(),
-    timestamp: new Date().toISOString(),
-  };
+  }) => {
 
-  try {
-    // Save permanently in Firebase
-    const docRef = await addDoc(
-      collection(db, 'stockMovements'),
-      movement
-    );
+    const qty =
+      Number(quantity) || 0;
 
-    const firebaseMovement = {
-      id: docRef.id,
-      ...movement,
+    if (
+      !qty ||
+      qty <= 0
+    ) {
+      return;
+    }
+
+    const movement = {
+      productId,
+      productName,
+      quantity: qty,
+      action,
+      date:
+        getLocalDateString(),
+      timestamp:
+        new Date().toISOString(),
     };
 
-    // Keep local state updated immediately
-    setStockTransactions((prev) => [
-      firebaseMovement,
-      ...prev,
-    ]);
+    try {
 
-    console.log(
-      'Stock movement saved:',
-      firebaseMovement
-    );
+      const docRef =
+        await addDoc(
+          collection(
+            db,
+            'stockMovements'
+          ),
+          movement
+        );
 
-  } catch (error) {
-    console.log(
-      'Firebase stock movement error:',
-      error
-    );
-  }
-};
+      const firebaseMovement = {
+        id: docRef.id,
+        ...movement,
+      };
+
+      setStockTransactions(
+        (prev) => [
+          firebaseMovement,
+          ...prev,
+        ]
+      );
+
+    } catch (error) {
+
+      console.log(
+        'Firebase stock movement error:',
+        error
+      );
+    }
+  };
 
   // =====================================================
   // QUICK INVENTORY STOCK UPDATE
   // =====================================================
 
-  const handleQuickStockUpdate = async (item, newStock) => {
-  if (!item) return;
+  const handleQuickStockUpdate = async (
+    item,
+    newStock
+  ) => {
 
-  const updatedStock = Number(newStock) || 0;
+    if (!item) return;
 
-  if (updatedStock < 0) return;
+    const updatedStock =
+      Number(newStock) || 0;
 
-  try {
-    // Update Firebase
-    await updateDoc(
-      doc(db, 'products', item.id),
-      {
-        stock: updatedStock,
-      }
-    );
+    if (
+      updatedStock < 0
+    ) {
+      return;
+    }
 
-    // Update Products state
-    setProducts((prev) =>
-      (prev || []).map((product) =>
-        product.id === item.id
-          ? {
-              ...product,
-              stock: updatedStock,
-            }
-          : product
-      )
-    );
+    try {
 
-    // Update Inventory state
-    setInventoryItems((prev) =>
-      (prev || []).map((inventoryItem) =>
-        inventoryItem.id === item.id
-          ? {
-              ...inventoryItem,
-              stock: updatedStock,
-            }
-          : inventoryItem
-      )
-    );
+      await updateDoc(
+        doc(
+          db,
+          'products',
+          item.id
+        ),
+        {
+          stock:
+            updatedStock,
+        }
+      );
 
-    console.log('Stock updated in Firebase');
+      setProducts(
+        (prev) =>
+          (prev || []).map(
+            (product) =>
+              product.id === item.id
+                ? {
+                    ...product,
+                    stock:
+                      updatedStock,
+                  }
+                : product
+          )
+      );
 
-  } catch (error) {
-    console.log('Firebase stock update error:', error);
+      setInventoryItems(
+        (prev) =>
+          (prev || []).map(
+            (inventoryItem) =>
+              inventoryItem.id ===
+              item.id
+                ? {
+                    ...inventoryItem,
+                    stock:
+                      updatedStock,
+                  }
+                : inventoryItem
+          )
+      );
 
-    Alert.alert(
-      'Error',
-      'Unable to update stock.'
-    );
-  }
-};
+    } catch (error) {
+
+      console.log(
+        'Firebase stock update error:',
+        error
+      );
+
+      Alert.alert(
+        'Error',
+        'Unable to update stock.'
+      );
+    }
+  };
 
   // =====================================================
   // SAVE PRODUCT
   // =====================================================
 
-  const handleSaveProduct = async (formData) => {
-  try {
-    const currentProducts = products || [];
-    const currentInventory = inventoryItems || [];
+  const handleSaveProduct = async (
+    formData
+  ) => {
 
-    const numStock = Number(formData.stock) || 0;
-    const numPrice = Number(formData.price) || 0;
-    const numCost = Number(formData.costPrice) || 0;
+    if (productBusy) return;
+
+    const numStock =
+      Number(formData.stock) || 0;
+
+    const numPrice =
+      Number(formData.price) || 0;
+
+    const numCost =
+      Number(
+        formData.costPrice
+      ) || 0;
 
     const formattedData = {
       ...formData,
-      stock: numStock,
-      price: numPrice,
-      costPrice: numCost,
-      profit: (numPrice - numCost).toFixed(2),
+
+      stock:
+        numStock,
+
+      price:
+        numPrice,
+
+      costPrice:
+        numCost,
+
+      profit:
+        (
+          numPrice -
+          numCost
+        ).toFixed(2),
     };
 
-    // =====================================================
-    // EDIT EXISTING PRODUCT
-    // =====================================================
+    setProductBusy(true);
 
     if (editingProduct) {
-      const productRef = doc(
-        db,
-        'products',
-        editingProduct.id
-      );
 
-      await updateDoc(productRef, formattedData);
-
-      const updatedProduct = {
-        ...editingProduct,
-        ...formattedData,
-      };
+      const oldProduct =
+        editingProduct;
 
       setProducts(
-        currentProducts.map((p) =>
-          p.id === editingProduct.id
-            ? updatedProduct
-            : p
-        )
+        (prev) =>
+          prev.map(
+            (p) =>
+              p.id ===
+              editingProduct.id
+                ? {
+                    ...p,
+                    ...formattedData,
+                  }
+                : p
+          )
       );
 
-      // Update inventory locally
       setInventoryItems(
-        currentInventory.map((item) =>
-          item.id === editingProduct.id
-            ? {
-                ...item,
-                name: formData.name,
-                stock: numStock,
-                price: numPrice,
-                costPrice: numCost,
-              }
-            : item
-        )
+        (prev) =>
+          prev.map(
+            (item) =>
+              item.id ===
+              editingProduct.id
+                ? {
+                    ...item,
+                    name:
+                      formData.name,
+                    stock:
+                      numStock,
+                    price:
+                      numPrice,
+                    costPrice:
+                      numCost,
+                  }
+                : item
+          )
       );
 
-      Alert.alert(
-        'Success',
-        'Product updated successfully.'
+      setProductModalVisible(
+        false
       );
+
+      setEditingProduct(
+        null
+      );
+
+      setProductNotice({
+        type: 'loading',
+        message:
+          'Updating product...',
+      });
+
+      try {
+
+        await updateDoc(
+          doc(
+            db,
+            'products',
+            editingProduct.id
+          ),
+          formattedData
+        );
+
+        setProductNotice({
+          type: 'success',
+          message:
+            'Product updated successfully.',
+        });
+
+        setTimeout(() => {
+          setProductNotice(null);
+        }, 2500);
+
+      } catch (error) {
+
+        setProducts(
+          (prev) =>
+            prev.map(
+              (p) =>
+                p.id ===
+                oldProduct.id
+                  ? oldProduct
+                  : p
+            )
+        );
+
+        setProductNotice({
+          type: 'error',
+          message:
+            'Update failed. Please try again.',
+        });
+
+        setTimeout(() => {
+          setProductNotice(null);
+        }, 3000);
+
+        console.log(
+          'Firebase product update error:',
+          error
+        );
+
+      } finally {
+
+        setProductBusy(false);
+      }
+
+      return;
     }
 
-    // =====================================================
-    // ADD NEW PRODUCT
-    // =====================================================
+    const temporaryId =
+      `temp-${Date.now()}`;
 
-    else {
-      const docRef = await addDoc(
-        collection(db, 'products'),
-        formattedData
-      );
+    const optimisticProduct = {
+      id: temporaryId,
+      ...formattedData,
+    };
 
-      const newProduct = {
-        id: docRef.id,
-        ...formattedData,
-      };
-
-      // Add to React state
-      setProducts((prev) => [
+    setProducts(
+      (prev) => [
         ...prev,
-        newProduct,
-      ]);
+        optimisticProduct,
+      ]
+    );
 
-      // Add inventory locally
-      setInventoryItems((prev) => [
+    setInventoryItems(
+      (prev) => [
         ...prev,
         {
-          id: docRef.id,
-          name: formData.name,
-          stock: numStock,
+          id: temporaryId,
+          name:
+            formData.name,
+          stock:
+            numStock,
           minStock: 5,
-          price: numPrice,
-          costPrice: numCost,
+          price:
+            numPrice,
+          costPrice:
+            numCost,
         },
-      ]);
+      ]
+    );
 
-      if (numStock > 0) {
+    setProductModalVisible(
+      false
+    );
+
+    setEditingProduct(
+      null
+    );
+
+    setProductNotice({
+      type: 'loading',
+      message:
+        'Adding product...',
+    });
+
+    try {
+
+      const docRef =
+        await addDoc(
+          collection(
+            db,
+            'products'
+          ),
+          formattedData
+        );
+
+      setProducts(
+        (prev) =>
+          prev.map(
+            (p) =>
+              p.id === temporaryId
+                ? {
+                    ...p,
+                    id:
+                      docRef.id,
+                  }
+                : p
+          )
+      );
+
+      setInventoryItems(
+        (prev) =>
+          prev.map(
+            (item) =>
+              item.id ===
+              temporaryId
+                ? {
+                    ...item,
+                    id:
+                      docRef.id,
+                  }
+                : item
+          )
+      );
+
+      if (
+        numStock > 0
+      ) {
+
         recordStockMovement({
-          productId: docRef.id,
-          productName: formData.name,
-          quantity: numStock,
+          productId:
+            docRef.id,
+
+          productName:
+            formData.name,
+
+          quantity:
+            numStock,
+
           action: 'ADD',
         });
       }
 
-      Alert.alert(
-        'Success',
-        'Product added successfully.'
+      setProductNotice({
+        type: 'success',
+        message:
+          'Product added successfully.',
+      });
+
+      setTimeout(() => {
+        setProductNotice(null);
+      }, 2500);
+
+    } catch (error) {
+
+      setProducts(
+        (prev) =>
+          prev.filter(
+            (p) =>
+              p.id !==
+              temporaryId
+          )
       );
+
+      setInventoryItems(
+        (prev) =>
+          prev.filter(
+            (item) =>
+              item.id !==
+              temporaryId
+          )
+      );
+
+      setProductNotice({
+        type: 'error',
+        message:
+          'Product was not saved. Please try again.',
+      });
+
+      setTimeout(() => {
+        setProductNotice(null);
+      }, 3000);
+
+      console.log(
+        'Firebase product save error:',
+        error
+      );
+
+    } finally {
+
+      setProductBusy(false);
     }
-
-    setProductModalVisible(false);
-    setEditingProduct(null);
-
-  } catch (error) {
-    console.log(
-      'Firebase product save error:',
-      error
-    );
-
-    Alert.alert(
-      'Error',
-      'Unable to save product. Please try again.'
-    );
-  }
-};
-
-  
+  };
 
   // =====================================================
   // DELETE PRODUCT
   // =====================================================
 
- const handleDeleteProduct = async (id) => {
-  try {
-    await deleteDoc(
-      doc(db, 'products', id)
-    );
+  const handleDeleteProduct = async (
+    id
+  ) => {
 
-    setProducts((prev) =>
-      (prev || []).filter(
-        (product) => product.id !== id
-      )
-    );
+    if (productBusy) return;
 
-    setInventoryItems((prev) =>
-      (prev || []).filter(
-        (item) => item.id !== id
-      )
-    );
+    setProductBusy(true);
 
-    Alert.alert(
-      'Success',
-      'Product deleted successfully.'
-    );
+    setProductNotice({
+      type: 'loading',
+      message:
+        'Deleting product...',
+    });
 
-  } catch (error) {
-    console.log(
-      'Firebase product delete error:',
-      error
-    );
+    try {
 
-    Alert.alert(
-      'Error',
-      'Unable to delete product.'
-    );
-  }
-};
-  // =====================================================
-  // SAVE INVENTORY
-  // =====================================================
-
-  const handleSaveInventory = async (formData) => {
-  const currentInventory = inventoryItems || [];
-  const numStock = Number(formData.stock) || 0;
-
-  try {
-    // =====================================================
-    // EDIT INVENTORY
-    // =====================================================
-
-    if (editingInventory) {
-      const oldItem = currentInventory.find(
-        (i) => i.id === editingInventory.id
-      );
-
-      const oldStock = Number(oldItem?.stock) || 0;
-      const stockDifference = numStock - oldStock;
-
-      // Update Firebase
-      await updateDoc(
-        doc(db, 'products', editingInventory.id),
-        {
-          ...formData,
-          stock: numStock,
-        }
-      );
-
-      // Update Inventory state
-      setInventoryItems(
-        currentInventory.map((i) =>
-          i.id === editingInventory.id
-            ? {
-                ...i,
-                ...formData,
-                stock: numStock,
-              }
-            : i
+      await deleteDoc(
+        doc(
+          db,
+          'products',
+          id
         )
       );
 
-      // Update Products state
-      setProducts((prev) =>
-        (prev || []).map((p) =>
+      setProducts(
+        (prev) =>
+          (prev || []).filter(
+            (product) =>
+              product.id !== id
+          )
+      );
+
+      setInventoryItems(
+        (prev) =>
+          (prev || []).filter(
+            (item) =>
+              item.id !== id
+          )
+      );
+
+      setProductNotice({
+        type: 'success',
+        message:
+          'Product deleted successfully.',
+      });
+
+      setTimeout(() => {
+        setProductNotice(null);
+      }, 2500);
+
+    } catch (error) {
+
+      console.log(
+        'Firebase product delete error:',
+        error
+      );
+
+      setProductNotice({
+        type: 'error',
+        message:
+          'Delete failed. Please try again.',
+      });
+
+      setTimeout(() => {
+        setProductNotice(null);
+      }, 3000);
+
+    } finally {
+
+      setProductBusy(false);
+    }
+  };
+
+ // =====================================================
+// SAVE INVENTORY
+// =====================================================
+
+const handleSaveInventory = async (formData) => {
+
+  const currentInventory =
+    inventoryItems || [];
+
+  const numStock =
+    Number(formData.stock) || 0;
+
+  if (!editingInventory) {
+
+    setProductNotice({
+      type: 'loading',
+      message:
+        'Add a new product from the Products screen. Its inventory will be created automatically.',
+    });
+
+    setTimeout(() => {
+      setProductNotice(null);
+    }, 3000);
+
+    return;
+  }
+
+  const oldItem =
+    currentInventory.find(
+      (i) =>
+        i.id === editingInventory.id
+    );
+
+  const oldStock =
+    Number(oldItem?.stock) || 0;
+
+  const stockDifference =
+    numStock - oldStock;
+
+  // Save old data for rollback
+  const oldInventoryItems =
+    currentInventory;
+
+  const oldProducts =
+    products || [];
+
+  // ===================================================
+  // OPTIMISTIC UI UPDATE
+  // ===================================================
+
+  setInventoryItems(
+    currentInventory.map(
+      (i) =>
+        i.id === editingInventory.id
+          ? {
+              ...i,
+              ...formData,
+              stock: numStock,
+            }
+          : i
+    )
+  );
+
+  setProducts(
+    (prev) =>
+      (prev || []).map(
+        (p) =>
           p.id === editingInventory.id
             ? {
                 ...p,
@@ -645,66 +1442,116 @@ const loadStockMovements = async () => {
                 stock: numStock,
               }
             : p
-        )
-      );
+      )
+  );
 
-      // Stock IN
-      if (stockDifference > 0) {
-        recordStockMovement({
-          productId: editingInventory.id,
-          productName:
-            formData.name || editingInventory.name,
-          quantity: stockDifference,
-          action: 'ADD',
-        });
+  // Close modal immediately
+  setInventoryModalVisible(false);
+  setEditingInventory(null);
+
+  // Show notification immediately
+  setProductNotice({
+    type: 'loading',
+    message: 'Updating inventory...',
+  });
+
+  try {
+
+    // =================================================
+    // FIREBASE UPDATE
+    // =================================================
+
+    await updateDoc(
+      doc(
+        db,
+        'products',
+        editingInventory.id
+      ),
+      {
+        ...formData,
+        stock: numStock,
       }
+    );
 
-      // Stock OUT
-      if (stockDifference < 0) {
-        recordStockMovement({
-          productId: editingInventory.id,
-          productName:
-            formData.name || editingInventory.name,
-          quantity: Math.abs(stockDifference),
-          action: 'REMOVE',
-        });
-      }
+    // =================================================
+    // STOCK MOVEMENT
+    // =================================================
 
-      Alert.alert(
-        'Success',
-        'Inventory updated successfully.'
-      );
+    if (stockDifference > 0) {
+
+      recordStockMovement({
+        productId:
+          editingInventory.id,
+
+        productName:
+          formData.name ||
+          editingInventory.name,
+
+        quantity:
+          stockDifference,
+
+        action: 'ADD',
+      });
     }
 
-    // =====================================================
-    // ADD INVENTORY ITEM
-    // =====================================================
+    if (stockDifference < 0) {
 
-    else {
-      // IMPORTANT:
-      // Inventory should normally belong to a product.
-      // So for now, do NOT create a separate Firebase
-      // inventory document here.
-      Alert.alert(
-        'Info',
-        'Add a new product from the Products screen. Its inventory will be created automatically.'
-      );
+      recordStockMovement({
+        productId:
+          editingInventory.id,
 
-      return;
+        productName:
+          formData.name ||
+          editingInventory.name,
+
+        quantity:
+          Math.abs(stockDifference),
+
+        action: 'REMOVE',
+      });
     }
 
-    setInventoryModalVisible(false);
-    setEditingInventory(null);
+    // =================================================
+    // SUCCESS
+    // =================================================
+
+    setProductNotice({
+      type: 'success',
+      message:
+        'Inventory updated successfully.',
+    });
+
+    setTimeout(() => {
+      setProductNotice(null);
+    }, 2500);
 
   } catch (error) {
+
+    // =================================================
+    // ROLLBACK IF FIREBASE FAILS
+    // =================================================
+
+    setInventoryItems(
+      oldInventoryItems
+    );
+
+    setProducts(
+      oldProducts
+    );
+
+    setProductNotice({
+      type: 'error',
+      message:
+        'Update failed. Please try again.',
+    });
+
+    setTimeout(() => {
+      setProductNotice(null);
+    }, 3000);
+
     console.log(
       'Firebase inventory save error:',
       error
-    );
-
-    Alert.alert(
-      'Error',
-      'Unable to save inventory. Please try again.'
     );
   }
 };
@@ -713,220 +1560,665 @@ const loadStockMovements = async () => {
   // DELETE INVENTORY
   // =====================================================
 
-  const handleDeleteInventory = (id) => {
-    setInventoryItems(
-      (inventoryItems || []).filter(
-        (item) => item.id !== id
+  // =====================================================
+// DELETE INVENTORY
+// =====================================================
+
+// =====================================================
+// DELETE INVENTORY
+// =====================================================
+
+const handleDeleteInventory = async (id) => {
+
+  const oldInventoryItems =
+    inventoryItems || [];
+
+  const oldProducts =
+    products || [];
+
+  // ===================================================
+  // OPTIMISTIC UI UPDATE
+  // ===================================================
+
+  setInventoryItems(
+    oldInventoryItems.filter(
+      (item) =>
+        item.id !== id
+    )
+  );
+
+  setProducts(
+    oldProducts.filter(
+      (product) =>
+        product.id !== id
+    )
+  );
+
+  // Show immediately
+  setProductNotice({
+    type: 'loading',
+    message:
+      'Deleting inventory item...',
+  });
+
+  try {
+
+    // =================================================
+    // FIREBASE DELETE
+    // =================================================
+
+    await deleteDoc(
+      doc(
+        db,
+        'products',
+        id
       )
     );
-  };
+
+    // =================================================
+    // SUCCESS
+    // =================================================
+
+    setProductNotice({
+      type: 'success',
+      message:
+        'Inventory item deleted successfully.',
+    });
+
+    setTimeout(() => {
+      setProductNotice(null);
+    }, 2500);
+
+  } catch (error) {
+
+    // =================================================
+    // ROLLBACK
+    // =================================================
+
+    setInventoryItems(
+      oldInventoryItems
+    );
+
+    setProducts(
+      oldProducts
+    );
+
+    setProductNotice({
+      type: 'error',
+      message:
+        'Delete failed. Please try again.',
+    });
+
+    setTimeout(() => {
+      setProductNotice(null);
+    }, 3000);
+
+    console.log(
+      'Firebase inventory delete error:',
+      error
+    );
+  }
+};
 
   // =====================================================
   // SCREEN CONTENT
-  // (SafeAreaProvider now wraps ALL of these, auth screens
-  // included, instead of only wrapping the main app below.)
   // =====================================================
 
   let screenContent = null;
 
-  if (currentScreen === 'SIGN_IN') {
+  if (
+    currentScreen ===
+    'SIGN_IN'
+  ) {
+
     screenContent = (
       <SignInScreen
-        onSignIn={handleSignIn}
-        onNavigateSignUp={() =>
-          setCurrentScreen('SIGN_UP')
+        onSignIn={
+          handleSignIn
         }
+
+        onNavigateSignUp={() =>
+          setCurrentScreen(
+            'SIGN_UP'
+          )
+        }
+
         onNavigateRecover={() =>
-          setCurrentScreen('RECOVER_PASSWORD')
+          setCurrentScreen(
+            'RECOVER_PASSWORD'
+          )
         }
       />
     );
-  } else if (currentScreen === 'SIGN_UP') {
+
+  } else if (
+    currentScreen ===
+    'SIGN_UP'
+  ) {
+
     screenContent = (
       <SignUpScreen
+
         onSignUpSuccess={() =>
-          setCurrentScreen('SIGN_IN')
+          setCurrentScreen(
+            'SIGN_IN'
+          )
         }
+
         onNavigateSignIn={() =>
-          setCurrentScreen('SIGN_IN')
+          setCurrentScreen(
+            'SIGN_IN'
+          )
         }
+
       />
     );
-  } else if (currentScreen === 'RECOVER_PASSWORD') {
+
+  } else if (
+    currentScreen ===
+    'RECOVER_PASSWORD'
+  ) {
+
     screenContent = (
       <RecoverPasswordScreen
+
         onSendReset={() =>
-          setCurrentScreen('SIGN_IN')
+          setCurrentScreen(
+            'SIGN_IN'
+          )
         }
+
         onNavigateSignIn={() =>
-          setCurrentScreen('SIGN_IN')
+          setCurrentScreen(
+            'SIGN_IN'
+          )
         }
+
       />
     );
+
   } else {
-    // =====================================================
-    // MAIN APP
-    // =====================================================
 
     screenContent = (
-      <View style={styles.mainContainer}>
+      <View
+        style={
+          styles.mainContainer
+        }
+      >
 
-        {/* SIDE MENU */}
+        {productNotice && (
+          <View
+            style={[
+              styles.productNotice,
+
+              productNotice.type ===
+                'success' &&
+                styles.productNoticeSuccess,
+
+              productNotice.type ===
+                'error' &&
+                styles.productNoticeError,
+            ]}
+          >
+            <Text
+              style={
+                styles.productNoticeTitle
+              }
+            >
+              {productNotice.type ===
+              'loading'
+                ? 'Please wait'
+                : productNotice.type ===
+                  'success'
+                ? 'Success'
+                : 'Something went wrong'}
+            </Text>
+
+            <Text
+              style={
+                styles.productNoticeText
+              }
+            >
+              {
+                productNotice.message
+              }
+            </Text>
+          </View>
+        )}
 
         <SideMenu
-          visible={isMenuOpen}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          visible={
+            isMenuOpen
+          }
+
+          activeTab={
+            activeTab
+          }
+
+          setActiveTab={
+            setActiveTab
+          }
+
           user={user}
-          onClose={() => setIsMenuOpen(false)}
+
+          onClose={() =>
+            setIsMenuOpen(
+              false
+            )
+          }
+
           onSignOut={() => {
-            setIsMenuOpen(false);
-            setCurrentScreen('SIGN_IN');
+            setIsMenuOpen(
+              false
+            );
+
+            setCurrentScreen(
+              'SIGN_IN'
+            );
           }}
         />
 
-        {/* DASHBOARD */}
+        {activeTab ===
+          'DASHBOARD' && (
 
-        {activeTab === 'DASHBOARD' && (
           <DashboardScreen
+
             onOpenMenu={() =>
-              setIsMenuOpen(true)
+              setIsMenuOpen(
+                true
+              )
             }
+
             onOpenProfile={() =>
-              setProfileModalVisible(true)
+              setProfileModalVisible(
+                true
+              )
             }
+
             user={user}
-            products={products || []}
-            productsCount={products?.length || 0}
-            inventoryItems={inventoryItems || []}
-            onUpdateInventory={handleUpdateInventory}
-            onRecordSale={handleRecordSale}
+
+            products={
+              products || []
+            }
+
+            productsCount={
+              products?.length ||
+              0
+            }
+
+            inventoryItems={
+              inventoryItems ||
+              []
+            }
+
+            onUpdateInventory={
+              handleUpdateInventory
+            }
+
+            onRecordSale={
+              handleRecordSale
+            }
+
           />
         )}
 
-        {/* PRODUCTS */}
+        {activeTab ===
+          'PRODUCTS' && (
 
-        {activeTab === 'PRODUCTS' && (
           <ProductsScreen
+
             onOpenMenu={() =>
-              setIsMenuOpen(true)
+              setIsMenuOpen(
+                true
+              )
             }
+
             onOpenProfile={() =>
-              setProfileModalVisible(true)
+              setProfileModalVisible(
+                true
+              )
             }
+
             user={user}
-            products={products || []}
+
+            products={
+              products || []
+            }
+
+            customCategories={
+              customCategories
+            }
+
+            setCustomCategories={
+              setCustomCategories
+            }
+
+            productBusy={
+              productBusy
+            }
+
             onOpenAdd={() => {
-              setEditingProduct(null);
-              setProductModalVisible(true);
+
+              if (
+                productBusy
+              ) {
+                return;
+              }
+
+              setEditingProduct(
+                null
+              );
+
+              setProductModalVisible(
+                true
+              );
             }}
+
             onOpenEdit={(product) => {
-              setEditingProduct(product);
-              setProductModalVisible(true);
+
+              if (
+                productBusy
+              ) {
+                return;
+              }
+
+              setEditingProduct(
+                product
+              );
+
+              setProductModalVisible(
+                true
+              );
             }}
-            onDelete={handleDeleteProduct}
+
+            onDelete={
+              handleDeleteProduct
+            }
+
           />
         )}
 
-        {/* INVENTORY */}
+        {activeTab ===
+          'INVENTORY' && (
 
-        {activeTab === 'INVENTORY' && (
           <InventoryScreen
+
             onOpenMenu={() =>
-              setIsMenuOpen(true)
+              setIsMenuOpen(
+                true
+              )
             }
+
             onOpenProfile={() =>
-              setProfileModalVisible(true)
+              setProfileModalVisible(
+                true
+              )
             }
+
             user={user}
-            inventoryItems={inventoryItems || []}
+
+            inventoryItems={
+              inventoryItems ||
+              []
+            }
+
             onOpenAdd={() => {
-              setEditingInventory(null);
-              setInventoryModalVisible(true);
+
+              setEditingInventory(
+                null
+              );
+
+              setInventoryModalVisible(
+                true
+              );
             }}
+
             onOpenEdit={(item) => {
-              setEditingInventory(item);
-              setInventoryModalVisible(true);
+
+              setEditingInventory(
+                item
+              );
+
+              setInventoryModalVisible(
+                true
+              );
             }}
-            onDelete={handleDeleteInventory}
-            onStockUpdate={handleQuickStockUpdate}
+
+            onDelete={
+              handleDeleteInventory
+            }
+
+            onStockUpdate={
+              handleQuickStockUpdate
+            }
+
           />
         )}
 
-        {/* REPORTS */}
+        {activeTab ===
+          'REPORTS' && (
 
-        {activeTab === 'REPORTS' && (
           <ReportsScreen
+
             onOpenMenu={() =>
-              setIsMenuOpen(true)
+              setIsMenuOpen(
+                true
+              )
             }
+
             onOpenProfile={() =>
-              setProfileModalVisible(true)
+              setProfileModalVisible(
+                true
+              )
             }
+
             user={user}
-            inventoryItems={inventoryItems || []}
-            salesTransactions={salesTransactions || []}
-            stockTransactions={stockTransactions || []}
+
+            salesTransactions={
+              salesTransactions ||
+              []
+            }
+
+            stockTransactions={
+              stockTransactions ||
+              []
+            }
+
+            inventoryItems={
+              inventoryItems ||
+              []
+            }
+
+            onAddSale={
+              handleAddReportSale
+            }
+
+            onEditSale={
+              handleEditReportSale
+            }
+
+            onDeleteSale={
+              handleDeleteReportSale
+            }
+
           />
         )}
-
-        {/* PROFILE */}
 
         <ProfileModal
-          visible={profileModalVisible}
-          user={user}
-          onClose={() =>
-            setProfileModalVisible(false)
-          }
-          onSave={handleUpdateProfile}
-        />
 
-        {/* PRODUCT MODAL */}
+          visible={
+            profileModalVisible
+          }
+
+          user={user}
+
+          onClose={() =>
+            setProfileModalVisible(
+              false
+            )
+          }
+
+          onSave={
+            handleUpdateProfile
+          }
+
+        />
 
         <ProductModal
-          visible={productModalVisible}
-          product={editingProduct}
-          onClose={() => {
-            setProductModalVisible(false);
-            setEditingProduct(null);
-          }}
-          onSave={handleSaveProduct}
-        />
 
-        {/* INVENTORY MODAL */}
+          visible={
+            productModalVisible
+          }
+
+          product={
+            editingProduct
+          }
+
+          customCategories={
+            customCategories
+          }
+
+          productBusy={
+            productBusy
+          }
+
+          onClose={() => {
+
+            setProductModalVisible(
+              false
+            );
+
+            setEditingProduct(
+              null
+            );
+          }}
+
+          onSave={
+            handleSaveProduct
+          }
+
+        />
 
         <InventoryModal
-          visible={inventoryModalVisible}
-          item={editingInventory}
+
+          visible={
+            inventoryModalVisible
+          }
+
+          item={
+            editingInventory
+          }
+
           onClose={() => {
-            setInventoryModalVisible(false);
-            setEditingInventory(null);
+
+            setInventoryModalVisible(
+              false
+            );
+
+            setEditingInventory(
+              null
+            );
           }}
-          onSave={handleSaveInventory}
+
+          onSave={
+            handleSaveInventory
+          }
+
         />
+
       </View>
     );
   }
 
-  // =====================================================
-  // ROOT — SafeAreaProvider + StatusBar wrap EVERY screen,
-  // not just the post-login app.
-  // =====================================================
-
   return (
     <SafeAreaProvider>
+
       <StatusBar
         barStyle="light-content"
-        backgroundColor={COLORS.darkBlue}
+        backgroundColor={
+          COLORS.darkBlue
+        }
       />
+
       {screenContent}
+
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+
   mainContainer: {
     flex: 1,
-    backgroundColor: COLORS.lightBackground,
+    backgroundColor:
+      COLORS.lightBackground,
   },
+
+  productNotice: {
+    position: 'absolute',
+    top: 55,
+    left: 20,
+    right: 20,
+    zIndex: 9999,
+
+    backgroundColor:
+      COLORS.white ||
+      '#FFFFFF',
+
+    borderRadius: 12,
+
+    padding: 14,
+
+    elevation: 8,
+
+    shadowColor: '#000',
+
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+
+    shadowOpacity: 0.2,
+
+    shadowRadius: 6,
+
+    borderLeftWidth: 5,
+
+    borderLeftColor:
+      COLORS.accentYellow ||
+      '#FBBF24',
+  },
+
+  productNoticeSuccess: {
+    borderLeftColor:
+      COLORS.primaryBlue ||
+      '#2563EB',
+  },
+
+  productNoticeError: {
+    borderLeftColor:
+      COLORS.dangerRed ||
+      '#EF4444',
+  },
+
+  productNoticeTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+
+    color:
+      COLORS.textDark ||
+      '#111827',
+
+    marginBottom: 2,
+  },
+
+  productNoticeText: {
+    fontSize: 12,
+
+    color:
+      COLORS.textLight ||
+      '#6B7280',
+  },
+
 });
+
